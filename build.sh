@@ -5,7 +5,8 @@ then
 mkdir bin
 fi
 pushd bin
-COMPILE_COMMAND="clang -g -o cs562 ../src/main.m -framework AppKit -fobjc-arc -fdiagnostics-absolute-paths"
+OUTPUT="playground"
+COMPILE_COMMAND="clang -g -o ${OUTPUT} ../src/main.m -framework AppKit -fobjc-arc -fdiagnostics-absolute-paths"
 CLANGD_COMMAND="${COMPILE_COMMAND} -MJ ../compile_commands.json"
 eval "$COMPILE_COMMAND"
 eval "$CLANGD_COMMAND"
