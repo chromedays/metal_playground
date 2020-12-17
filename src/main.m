@@ -1,4 +1,4 @@
-#include <AppKit/AppKit.h>
+#import <AppKit/AppKit.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -19,9 +19,7 @@ static bool gRunning;
 @end
 
 int main() {
-#if __has_feature(objc_arc)
   printf("Hello\n");
-#endif
 
   NSRect screenRect = [NSScreen mainScreen].frame;
   NSRect initialFrame =
