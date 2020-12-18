@@ -8,9 +8,13 @@ typedef struct _Vertex {
 } Vertex;
 
 typedef uint32_t VertexIndex;
+#define METAL_INDEX_TYPE MTLIndexTypeUInt32
+#define METAL_CONSTANT_ALIGNMENT 256
+#define NUM_BUFFERS_IN_FLIGHT 3
 
 typedef struct _UniformBlock {
-  Mat4 mvp;
+  Mat4 modelMat;
+  Mat4 projMat;
 } UniformBlock;
 
 static struct {
@@ -24,11 +28,15 @@ static struct {
 
   id<MTLBuffer> vertexBuffer;
   id<MTLBuffer> indexBuffer;
-  id<MTLBuffer> uniformBuffer;
+  //   id<MTLBuffer> uniformBuffer;
+
+  UniformBlock uniformBlock;
 } gRenderer;
 
-#define METAL_CONSTANT_ALIGNMENT 256
-#define NUM_BUFFERS_IN_FLIGHT 3
+static int divideRounded(int n, int d) {
+  int result = (n + d - 1) / d;
+  return d;
+}
 
 static int alignUp(int n, int alignment) {
   int result = ((n + alignment - 1) / alignment) * alignment;
@@ -80,14 +88,18 @@ static void initRenderer(MTKView *view) {
       newBufferWithBytes:indices
                   length:sizeof(indices)
                  options:MTLResourceOptionCPUCacheModeDefault];
-  gRenderer.uniformBuffer = [gRenderer.device
-      newBufferWithLength:alignUp(sizeof(UniformBlock),
-                                  METAL_CONSTANT_ALIGNMENT) *
-                          NUM_BUFFERS_IN_FLIGHT
-                  options:MTLResourceOptionCPUCacheModeDefault];
+  //   gRenderer.uniformBuffer = [gRenderer.device
+  //       newBufferWithLength:alignUp(sizeof(UniformBlock),
+  //                                   METAL_CONSTANT_ALIGNMENT) *
+  //                           NUM_BUFFERS_IN_FLIGHT
+  //                   options:MTLResourceOptionCPUCacheModeDefault];
+  //   gRenderer.uniformBlock.mvp = mat4Identity();
 }
 
 static void render(MTKView *view) {
+  Mat4 projection =
+      mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 1, 10.f);
+  gRenderer.uniformBlock.projMat = projection;
 
   id<MTLCommandBuffer> commandBuffer = [gRenderer.queue commandBuffer];
   MTLRenderPassDescriptor *renderPassDescriptor =
@@ -98,18 +110,36 @@ static void render(MTKView *view) {
       [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
   [renderEncoder setRenderPipelineState:gRenderer.pipeline];
   //   [renderEncoder setDepthStencilState:gRenderer.depthStencilState];
+
   [renderEncoder setFrontFacingWinding:MTLWindingCounterClockwise];
   [renderEncoder setCullMode:MTLCullModeNone];
+  [renderEncoder setTriangleFillMode:MTLTriangleFillModeLines];
+#if 1
+  gRenderer.uniformBlock.modelMat = mat4Translate((Float3){0, 0, -2.1f});
   [renderEncoder setVertexBuffer:gRenderer.vertexBuffer offset:0 atIndex:0];
-  int bufferIndex = 0;
-  NSUInteger uniformBufferOffset =
-      alignUp(sizeof(UniformBlock), METAL_CONSTANT_ALIGNMENT) * bufferIndex;
-  [renderEncoder setVertexBuffer:gRenderer.uniformBuffer
-                          offset:uniformBufferOffset
-                         atIndex:1];
-  [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
+  [renderEncoder setVertexBytes:&gRenderer.uniformBlock
+                         length:sizeof(gRenderer.uniformBlock)
+                        atIndex:1];
+  NSUInteger numIndices = gRenderer.indexBuffer.length / sizeof(VertexIndex);
+  [renderEncoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle
+                            indexCount:numIndices
+                             indexType:METAL_INDEX_TYPE
+                           indexBuffer:gRenderer.indexBuffer
+                     indexBufferOffset:0];
+#else
+
+  Vertex testPoint = {.position = {0, 0, -5.8f, 1}, .color = {1, 0, 0, 1}};
+  testPoint.position.y = testPoint.position.z * tanf(degToRad(30));
+  testPoint.position.x =
+      testPoint.position.z * tanf(degToRad(30)) * gScreenWidth / gScreenHeight;
+  [renderEncoder setVertexBytes:&testPoint length:sizeof(testPoint) atIndex:0];
+  [renderEncoder setVertexBytes:&gRenderer.uniformBlock
+                         length:sizeof(gRenderer.uniformBlock)
+                        atIndex:1];
+  [renderEncoder drawPrimitives:MTLPrimitiveTypePoint
                     vertexStart:0
-                    vertexCount:3];
+                    vertexCount:1];
+#endif
   [renderEncoder endEncoding];
   [commandBuffer presentDrawable:view.currentDrawable];
   [commandBuffer commit];
