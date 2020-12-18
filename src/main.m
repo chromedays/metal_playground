@@ -1,26 +1,60 @@
+#include "memory.c"
+#include "renderer.m"
 #import <AppKit/AppKit.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 static float gScreenWidth = 1280;
 static float gScreenHeight = 720;
-static const char *gWindowTitle = "Metal Playground";
+static const char *gWindowTitleBase = "Metal Playground";
 static bool gRunning;
 
-@interface MainWindowDelegate : NSObject <NSWindowDelegate>
+@interface ViewDelegate : NSObject <MTKViewDelegate>
+@end
+@implementation ViewDelegate
+- (void)drawInMTKView:(MTKView *)view {
+  render(view);
+}
+
+- (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
+}
 @end
 
-@implementation MainWindowDelegate
+@interface ViewController : NSViewController {
+  MTKView *mtkView;
+  ViewDelegate *mtkViewDelegate;
+}
+@end
 
-- (void)windowWillClose:(NSNotification *)notification {
-  gRunning = false;
+@implementation ViewController
+
+- (void)loadView {
+  self.view = [[MTKView alloc]
+      initWithFrame:NSMakeRect(0, 0, gScreenWidth, gScreenHeight)];
+  mtkViewDelegate = [[ViewDelegate alloc] init];
+}
+
+- (void)viewDidLoad {
+  [super viewDidLoad];
+
+  mtkView = (MTKView *)self.view;
+  initRenderer(mtkView);
+  mtkView.delegate = mtkViewDelegate;
+}
+
+- (void)setRepresentedObject:(id)representedObject {
+  [super setRepresentedObject:representedObject];
 }
 
 @end
 
-int main() {
-  printf("Hello\n");
+@interface AppDelegate : NSObject <NSApplicationDelegate> {
+  NSWindow *window;
+}
+@end
 
+@implementation AppDelegate
+- (void)applicationDidFinishLaunching:(NSNotification *)notification {
   NSRect screenRect = [NSScreen mainScreen].frame;
   NSRect initialFrame =
       NSMakeRect((screenRect.size.width - gScreenWidth) * 0.5f,
@@ -30,36 +64,49 @@ int main() {
       NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
       NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
 
-  NSWindow *window =
-      [[NSWindow alloc] initWithContentRect:initialFrame
-                                  styleMask:windowStyle
-                                    backing:NSBackingStoreBuffered
-                                      defer:NO];
+  window = [[NSWindow alloc] initWithContentRect:initialFrame
+                                       styleMask:windowStyle
+                                         backing:NSBackingStoreBuffered
+                                           defer:NO];
   [window setBackgroundColor:NSColor.redColor];
-  [window setTitle:[NSString stringWithUTF8String:gWindowTitle]];
+  [window setTitle:[NSString stringWithUTF8String:gWindowTitleBase]];
+  [window setContentViewController:[[ViewController alloc] init]];
   [window makeKeyAndOrderFront:nil]; // Display the window
+}
+@end
 
-  MainWindowDelegate *mainWindowDelegate = [[MainWindowDelegate alloc] init];
-  [window setDelegate:mainWindowDelegate];
+int main(int argc, const char **argv) {
+  printf("Hello\n");
+  NSString *launchPath = [NSBundle.mainBundle pathForResource:@"test"
+                                                       ofType:nil];
+  NSFileManager *filemgr;
+  NSString *currentpath;
 
-  gRunning = true;
+  filemgr = [[NSFileManager alloc] init];
 
-  while (gRunning) {
-    NSEvent *event;
+  currentpath = [filemgr currentDirectoryPath];
+  NSLog(@"haha %@", currentpath);
+  AppDelegate *appDelegate = [[AppDelegate alloc] init];
+  [[NSApplication sharedApplication] setDelegate:appDelegate];
+  return NSApplicationMain(argc, argv);
+  // gRunning = true;
 
-    do {
-      event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                 untilDate:nil
-                                    inMode:NSDefaultRunLoopMode
-                                   dequeue:YES];
+  // while (gRunning) {
+  //   NSEvent *event;
 
-      switch (event.type) {
-      default:
-        [NSApp sendEvent:event];
-      }
+  //   do {
+  //     event = [NSApp nextEventMatchingMask:NSEventMaskAny
+  //                                untilDate:nil
+  //                                   inMode:NSDefaultRunLoopMode
+  //                                  dequeue:YES];
 
-    } while (event != nil);
-  }
+  //     switch (event.type) {
+  //     default:
+  //       [NSApp sendEvent:event];
+  //     }
 
-  return 0;
+  //   } while (event != nil);
+
+  //   [metalView draw];
+  // }
 }
