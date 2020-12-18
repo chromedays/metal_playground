@@ -21,6 +21,7 @@ static struct {
   id<MTLDevice> device;
   id<MTLCommandQueue> queue;
   MTLPixelFormat viewPixelFormat;
+  MTLPixelFormat viewDepthFormat;
 
   id<MTLLibrary> library;
   id<MTLRenderPipelineState> pipeline;
@@ -47,7 +48,8 @@ static void initRenderer(MTKView *view) {
   gRenderer.device = MTLCreateSystemDefaultDevice();
   view.device = gRenderer.device;
   gRenderer.queue = [gRenderer.device newCommandQueue];
-  gRenderer.viewPixelFormat = ((CAMetalLayer *)view.layer).pixelFormat;
+  gRenderer.viewPixelFormat = view.colorPixelFormat;
+  gRenderer.viewDepthFormat = view.depthStencilPixelFormat;
 
   gRenderer.library = [gRenderer.device newLibraryWithFile:@"shaders.metallib"
                                                      error:nil];
@@ -58,6 +60,7 @@ static void initRenderer(MTKView *view) {
   pipelineDesc.fragmentFunction =
       [gRenderer.library newFunctionWithName:@"fragment_main"];
   pipelineDesc.colorAttachments[0].pixelFormat = gRenderer.viewPixelFormat;
+  pipelineDesc.depthAttachmentPixelFormat = gRenderer.viewDepthFormat;
   gRenderer.pipeline =
       [gRenderer.device newRenderPipelineStateWithDescriptor:pipelineDesc
                                                        error:nil];
@@ -96,7 +99,7 @@ static void initRenderer(MTKView *view) {
   //   gRenderer.uniformBlock.mvp = mat4Identity();
 }
 
-static void render(MTKView *view) {
+static void render(MTKView *view, float dt) {
   Mat4 projection =
       mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 1, 10.f);
   gRenderer.uniformBlock.projMat = projection;
@@ -105,17 +108,24 @@ static void render(MTKView *view) {
   MTLRenderPassDescriptor *renderPassDescriptor =
       view.currentRenderPassDescriptor;
   renderPassDescriptor.colorAttachments[0].clearColor =
-      MTLClearColorMake(1, 1, 1, 1);
+      MTLClearColorMake(0.1f, 0.1f, 0.1f, 1);
+  renderPassDescriptor.depthAttachment.clearDepth = 0;
   id<MTLRenderCommandEncoder> renderEncoder =
       [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
   [renderEncoder setRenderPipelineState:gRenderer.pipeline];
-  //   [renderEncoder setDepthStencilState:gRenderer.depthStencilState];
+  [renderEncoder setDepthStencilState:gRenderer.depthStencilState];
 
   [renderEncoder setFrontFacingWinding:MTLWindingCounterClockwise];
   [renderEncoder setCullMode:MTLCullModeNone];
-  [renderEncoder setTriangleFillMode:MTLTriangleFillModeLines];
+  [renderEncoder setTriangleFillMode:MTLTriangleFillModeFill];
 #if 1
-  gRenderer.uniformBlock.modelMat = mat4Translate((Float3){0, 0, -2.1f});
+  static float angle = 0;
+  angle += dt * 45.f;
+  if (angle > 360) {
+    angle -= 360;
+  }
+  gRenderer.uniformBlock.modelMat = mat4Multiply(
+      mat4Translate((Float3){0, 0, -5.1f}), mat4RotateY(degToRad(angle)));
   [renderEncoder setVertexBuffer:gRenderer.vertexBuffer offset:0 atIndex:0];
   [renderEncoder setVertexBytes:&gRenderer.uniformBlock
                          length:sizeof(gRenderer.uniformBlock)

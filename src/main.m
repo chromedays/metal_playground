@@ -13,7 +13,7 @@ static bool gRunning;
 @end
 @implementation ViewDelegate
 - (void)drawInMTKView:(MTKView *)view {
-  render(view);
+  render(view, 1.f / view.preferredFramesPerSecond);
 }
 
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
@@ -40,6 +40,7 @@ static bool gRunning;
   [super viewDidLoad];
 
   mtkView = (MTKView *)self.view;
+  mtkView.depthStencilPixelFormat = MTLPixelFormatDepth32Float;
   initRenderer(mtkView);
   mtkView.delegate = mtkViewDelegate;
 }

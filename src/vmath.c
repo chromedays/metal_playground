@@ -97,6 +97,20 @@ Mat4 mat4Scale(Float3 scale) {
   return scaleMat;
 }
 
+Mat4 mat4RotateY(float rad) {
+  float c = cosf(rad);
+  float s = sinf(rad);
+
+  Mat4 rotation = {{
+      {c, 0, -s, 0},
+      {0, 1, 0, 0},
+      {s, 0, c, 0},
+      {0, 0, 0, 1},
+  }};
+
+  return rotation;
+}
+
 Mat4 mat4LookAt(const Float3 eye, const Float3 target, const Float3 upAxis) {
   Float3 forward = eye - target;
   forward = float3Normalize(forward);
