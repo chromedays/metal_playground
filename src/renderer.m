@@ -1,6 +1,7 @@
+#include "global.h"
+#include "vmath.c"
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
-#include "vmath.c"
 
 typedef struct _Vertex {
   Float4 position;
