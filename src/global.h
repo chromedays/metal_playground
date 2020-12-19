@@ -7,5 +7,4 @@ extern bool gRunning;
 extern float gScreenWidth;
 extern float gScreenHeight;
 
-
 #endif

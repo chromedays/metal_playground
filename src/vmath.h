@@ -1,7 +1,10 @@
 #ifndef vmath_h
 #define vmath_h
+#include "util.h"
 
 #define MATH_PI 3.141592f
+
+C_INTERFACE_BEGIN
 
 static inline float degToRad(float deg) {
   float rad = deg * MATH_PI / 180.f;
@@ -39,5 +42,7 @@ Mat4 mat4Scale(Float3 scale);
 Mat4 mat4RotateY(float rad);
 Mat4 mat4LookAt(const Float3 eye, const Float3 target, const Float3 upAxis);
 Mat4 mat4Perspective(float fov, float aspectRatio, float nearZ, float farZ);
+
+C_INTERFACE_END
 
 #endif /* vmath_h */
