@@ -1,5 +1,15 @@
 #!/bin/sh
 
+if [[ $1 == "clean" ]]
+then
+echo "Performing clean build..."
+fi
+
+if [[ $1 == "clean" ]] && [ -d tmp ]
+then
+trash tmp
+fi
+
 if [ -d bin ]
 then
 trash bin
@@ -7,7 +17,12 @@ fi
 mkdir bin
 
 # ./FBuild Exe-playground-Unity -clean -verbose -showcmds
+if [[ $1 == "clean" ]]
+then
+./FBuild Exe-playground-Unity -clean
+else
 ./FBuild Exe-playground-Unity
+fi
 ./FBuild Exe-playground -compdb
 
 pushd bin

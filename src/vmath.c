@@ -1,6 +1,16 @@
 #include "vmath.h"
 #include <math.h>
 
+float degToRad(float deg) {
+  float rad = deg * MATH_PI / 180.f;
+  return rad;
+}
+
+float radToDeg(float rad) {
+  float deg = rad * 180.f / MATH_PI;
+  return deg;
+}
+
 float float2Dot(const Float2 a, const Float2 b) {
   float result = a.x * b.x + a.y * b.y;
   return result;

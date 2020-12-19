@@ -1,5 +1,4 @@
 #include "util.h"
-#include <stdlib.h>
 
 #define MALLOC(type) (type *)allocate(sizeof(type), _Alignof(type))
 #define MALLOC_ARRAY(type, count)                                              \
@@ -8,9 +7,7 @@
 
 C_INTERFACE_BEGIN
 
-static void *allocate(int size, int alignment) {
-  return aligned_alloc(alignment, size);
-}
-static void deallocate(void *memory) { free(memory); }
+void *allocate(int size, int alignment);
+void deallocate(void *memory);
 
 C_INTERFACE_END

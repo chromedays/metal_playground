@@ -6,15 +6,8 @@
 
 C_INTERFACE_BEGIN
 
-static inline float degToRad(float deg) {
-  float rad = deg * MATH_PI / 180.f;
-  return rad;
-}
-
-static inline float radToDeg(float rad) {
-  float deg = rad * 180.f / MATH_PI;
-  return deg;
-}
+float degToRad(float deg);
+float radToDeg(float rad);
 
 typedef float Float2 __attribute__((ext_vector_type(2)));
 typedef float Float3 __attribute__((ext_vector_type(3)));

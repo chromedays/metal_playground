@@ -5,8 +5,11 @@ Compiler('Compiler-Clang') {
 .clangBaseConfig = [
     .compiler = 'Compiler-Clang'
     .linker = '/usr/bin/clang'
-    .compilerOptions = ' -o "%2" "%1" -c -g -std=c11 -O0 -Wall -Wextra -fobjc-arc -fdiagnostics-absolute-paths --target=arm64-apple-macos11'
-    .linkerOptions = ' "%1" -o "%2" -framework AppKit -framework MetalKit -framework Metal --target=arm64-apple-macos11'
+    .compilerOptions = ' -o "%2" "%1" -c -g -O0 -Wall -Wextra -fobjc-arc -fdiagnostics-absolute-paths --target=arm64-apple-macos11'
+    .objcCompilerFlags = ' -x objective-c -std=c11'
+    .objcppCompilerFlags = ' -x objective-c++ -std=c++17'
+    .unityFlags = ' -Wno-#pragma-messages'
+    .linkerOptions = ' "%1" -o "%2" -framework AppKit -framework MetalKit -framework Metal --target=arm64-apple-macos11 -lc++'
 ]
 
 .projectName = 'playground'
@@ -15,9 +18,17 @@ Compiler('Compiler-Clang') {
     Using(.clangBaseConfig)
     ObjectList('Obj-$projectName$') {
         .Compiler = .compiler
-        .CompilerOptions = .compilerOptions
+        .CompilerOptions = .objcCompilerFlags + .compilerOptions
         .CompilerInputPath = 'src'
         .CompilerInputPattern = {'*.c', '*.m'}
+        .CompilerOutputPath = 'tmp'
+    }
+
+    ObjectList('Obj-$projectName$-Cpp') {
+        .Compiler = .compiler
+        .CompilerOptions = .objcppCompilerFlags + .compilerOptions
+        .CompilerInputPath = 'src'
+        .CompilerInputPattern = {'*.cpp', '*.mm'}
         .CompilerOutputPath = 'tmp'
     }
 
@@ -25,20 +36,34 @@ Compiler('Compiler-Clang') {
         .Linker = .linker
         .LinkerOutput = 'output/$projectName$_stub'
         .LinkerOptions = .linkerOptions
-        .Libraries = 'Obj-$projectName$'
+        .Libraries = {'Obj-$projectName$', 'Obj-$projectName$-Cpp'}
     }
 
     Unity('Unity-$projectName$') {
         .UnityInputPath = 'src'
         .UnityInputPattern = {'*.c', '*.m'}
         .UnityOutputPath = 'tmp'
-        .UnityOutputPattern = 'Unity*.m'
+        .UnityOutputPattern = 'UnityC*.m'
+    }
+
+    Unity('Unity-$projectName$-Cpp') {
+        .UnityInputPath = 'src'
+        .UnityInputPattern = {'*.cpp', '*.mm'}
+        .UnityOutputPath = 'tmp'
+        .UnityOutputPattern = 'UnityCpp*.mm'
     }
 
     ObjectList('Obj-$projectName$-Unity') {
         .Compiler = .compiler
-        .CompilerOptions = .compilerOptions + ' -Wno-#pragma-messages '
+        .CompilerOptions = .objcCompilerFlags + .compilerOptions + .unityFlags
         .CompilerInputUnity = 'Unity-$projectName$'
+        .CompilerOutputPath = 'tmp'
+    }
+
+    ObjectList('Obj-$projectName$-Unity-Cpp') {
+        .Compiler = .compiler
+        .CompilerOptions = .objcppCompilerFlags + .compilerOptions + .unityFlags
+        .CompilerInputUnity = 'Unity-$projectName$-Cpp'
         .CompilerOutputPath = 'tmp'
     }
 
@@ -46,6 +71,6 @@ Compiler('Compiler-Clang') {
         .Linker = .linker
         .LinkerOutput = 'bin/$projectName$'
         .LinkerOptions = .linkerOptions
-        .Libraries = 'Obj-$projectName$-Unity'
+        .Libraries = {'Obj-$projectName$-Unity', 'Obj-$projectName$-Unity-Cpp'}
     }
 }
