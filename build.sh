@@ -6,7 +6,8 @@ trash bin
 fi
 mkdir bin
 
-./FBuild Exe-playground-Unity -clean -verbose -showcmds
+# ./FBuild Exe-playground-Unity -clean -verbose -showcmds
+./FBuild Exe-playground-Unity
 ./FBuild Exe-playground -compdb
 
 pushd bin
