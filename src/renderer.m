@@ -109,7 +109,7 @@ void initRenderer(MTKView *view) {
 void render(MTKView *view, float dt) {
 
   guiBeginFrame(view);
-  guiDemo();
+  doGUI();
 
   Mat4 projection =
       mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 1, 10.f);
@@ -129,14 +129,9 @@ void render(MTKView *view, float dt) {
   [renderEncoder setFrontFacingWinding:MTLWindingCounterClockwise];
   [renderEncoder setCullMode:MTLCullModeNone];
   [renderEncoder setTriangleFillMode:MTLTriangleFillModeFill];
-#if 1
-  static float angle = 0;
-  angle += dt * 45.f;
-  if (angle > 360) {
-    angle -= 360;
-  }
+
   gRenderer.uniformBlock.modelMat = mat4Multiply(
-      mat4Translate((Float3){0, 0, -5.1f}), mat4RotateY(degToRad(angle)));
+      mat4Translate((Float3){0, 0, -5.1f}), mat4RotateY(gGUI.angle));
   [renderEncoder setVertexBuffer:gRenderer.vertexBuffer offset:0 atIndex:0];
   [renderEncoder setVertexBytes:&gRenderer.uniformBlock
                          length:sizeof(gRenderer.uniformBlock)
@@ -147,20 +142,6 @@ void render(MTKView *view, float dt) {
                              indexType:METAL_INDEX_TYPE
                            indexBuffer:gRenderer.indexBuffer
                      indexBufferOffset:0];
-#else
-
-  Vertex testPoint = {.position = {0, 0, -5.8f, 1}, .color = {1, 0, 0, 1}};
-  testPoint.position.y = testPoint.position.z * tanf(degToRad(30));
-  testPoint.position.x =
-      testPoint.position.z * tanf(degToRad(30)) * gScreenWidth / gScreenHeight;
-  [renderEncoder setVertexBytes:&testPoint length:sizeof(testPoint) atIndex:0];
-  [renderEncoder setVertexBytes:&gRenderer.uniformBlock
-                         length:sizeof(gRenderer.uniformBlock)
-                        atIndex:1];
-  [renderEncoder drawPrimitives:MTLPrimitiveTypePoint
-                    vertexStart:0
-                    vertexCount:1];
-#endif
 
   guiEndFrameAndRender(commandBuffer, renderEncoder);
 

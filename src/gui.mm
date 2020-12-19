@@ -3,6 +3,8 @@
 #include "external/imgui/imgui_impl_osx.h"
 #include "external/imgui/imgui_impl_metal.h"
 
+GUI gGUI;
+
 extern "C" {
 
 void initGUI(id<MTLDevice> device) {
@@ -31,5 +33,9 @@ void guiEndFrameAndRender(id<MTLCommandBuffer> commandBufer,
   [renderEncoder popDebugGroup];
 }
 
-void guiDemo() { ImGui::ShowDemoWindow(); }
+void doGUI() {
+  ImGui::Begin("Control Panel");
+  ImGui::SliderAngle("Angle", &gGUI.angle);
+  ImGui::End();
+}
 }
