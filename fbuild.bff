@@ -1,8 +1,3 @@
-Settings
-{
-    .CachePath = "tmp"
-}
-
 Compiler('Compiler-Clang') {
     .Executable = '/usr/bin/clang'
 }
@@ -23,22 +18,34 @@ Compiler('Compiler-Clang') {
         .CompilerOptions = .compilerOptions
         .CompilerInputPath = 'src'
         .CompilerInputPattern = {'*.c', '*.m'}
-        // .CompilerInputFiles = {'src/main.m'}
         .CompilerOutputPath = 'tmp'
-        // .IntermediatePath = 'tmp'
     }
 
     Executable('Exe-$projectName$') {
         .Linker = .linker
-        .LinkerOutput = 'bin/$projectName$'
+        .LinkerOutput = 'output/$projectName$_stub'
         .LinkerOptions = .linkerOptions
         .Libraries = 'Obj-$projectName$'
     }
-}
 
-// ForEach(.config in .configs) {
-//     Using(.config)
-//     Alias('$config$') {
-//         .Targets = 
-//     }
-// }
+    Unity('Unity-$projectName$') {
+        .UnityInputPath = 'src'
+        .UnityInputPattern = {'*.c', '*.m'}
+        .UnityOutputPath = 'tmp'
+        .UnityOutputPattern = 'Unity*.m'
+    }
+
+    ObjectList('Obj-$projectName$-Unity') {
+        .Compiler = .compiler
+        .CompilerOptions = .compilerOptions + ' -Wno-#pragma-messages '
+        .CompilerInputUnity = 'Unity-$projectName$'
+        .CompilerOutputPath = 'tmp'
+    }
+
+    Executable('Exe-$projectName$-Unity') {
+        .Linker = .linker
+        .LinkerOutput = 'bin/$projectName$'
+        .LinkerOptions = .linkerOptions
+        .Libraries = 'Obj-$projectName$-Unity'
+    }
+}
