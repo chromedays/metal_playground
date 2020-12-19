@@ -1,5 +1,8 @@
-bin
+bin/
+tmp/
 compile_commands.json
+*.fdb
+.clangd/
 
 .DS_Store
 xcshareddata

@@ -1,0 +1,44 @@
+Settings
+{
+    .CachePath = "tmp"
+}
+
+Compiler('Compiler-Clang') {
+    .Executable = '/usr/bin/clang'
+}
+
+.clangBaseConfig = [
+    .compiler = 'Compiler-Clang'
+    .linker = '/usr/bin/clang'
+    .compilerOptions = '-o "%2" "%1" -c -g -std=c11 -O0 -fobjc-arc -fdiagnostics-absolute-paths --target=arm64-apple-macos11'
+    .linkerOptions = '"%1" -o "%2" -framework AppKit -framework MetalKit -framework Metal --target=arm64-apple-macos11'
+]
+
+.projectName = 'playground'
+
+{
+    Using(.clangBaseConfig)
+    ObjectList('Obj-$projectName$') {
+        .Compiler = .compiler
+        .CompilerOptions = .compilerOptions
+        // .CompilerInputPath = 'src'
+        // .CompilerInputPattern = {'*.c', '*.m'}
+        .CompilerInputFiles = {'src/main.m'}
+        .CompilerOutputPath = 'tmp'
+        // .IntermediatePath = 'tmp'
+    }
+
+    Executable('Exe-$projectName$') {
+        .Linker = .linker
+        .LinkerOutput = 'bin/$projectName$'
+        .LinkerOptions = .linkerOptions
+        .Libraries = 'Obj-$projectName$'
+    }
+}
+
+// ForEach(.config in .configs) {
+//     Using(.config)
+//     Alias('$config$') {
+//         .Targets = 
+//     }
+// }
