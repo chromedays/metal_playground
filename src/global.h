@@ -2,9 +2,10 @@
 #define global_h
 #include <stdbool.h>
 
-static const char *gWindowTitleBase = "Metal Playground";
-static bool gRunning;
-static float gScreenWidth = 1280;
-static float gScreenHeight = 720;
+extern const char *gWindowTitleBase;
+extern bool gRunning;
+extern float gScreenWidth;
+extern float gScreenHeight;
+
 
 #endif

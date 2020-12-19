@@ -1,5 +1,6 @@
+#include "renderer.h"
 #include "global.h"
-#include "vmath.c"
+#include "vmath.h"
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
 
@@ -45,7 +46,7 @@ static int alignUp(int n, int alignment) {
   return result;
 }
 
-static void initRenderer(MTKView *view) {
+void initRenderer(MTKView *view) {
   gRenderer.device = MTLCreateSystemDefaultDevice();
   view.device = gRenderer.device;
   gRenderer.queue = [gRenderer.device newCommandQueue];
@@ -100,7 +101,7 @@ static void initRenderer(MTKView *view) {
   //   gRenderer.uniformBlock.mvp = mat4Identity();
 }
 
-static void render(MTKView *view, float dt) {
+void render(MTKView *view, float dt) {
   Mat4 projection =
       mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 1, 10.f);
   gRenderer.uniformBlock.projMat = projection;

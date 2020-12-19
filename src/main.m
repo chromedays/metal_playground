@@ -1,8 +1,12 @@
-#include "memory.c"
-#include "renderer.m"
+#include "renderer.h"
 #import <AppKit/AppKit.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+const char *gWindowTitleBase = "Metal Playground";
+bool gRunning;
+float gScreenWidth = 1280;
+float gScreenHeight = 720;
 
 @interface ViewDelegate : NSObject <MTKViewDelegate>
 @end

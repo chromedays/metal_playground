@@ -36,6 +36,7 @@ Mat4 mat4Multiply(const Mat4 a, const Mat4 b);
 Mat4 mat4Identity();
 Mat4 mat4Translate(Float3 position);
 Mat4 mat4Scale(Float3 scale);
+Mat4 mat4RotateY(float rad);
 Mat4 mat4LookAt(const Float3 eye, const Float3 target, const Float3 upAxis);
 Mat4 mat4Perspective(float fov, float aspectRatio, float nearZ, float farZ);
 
