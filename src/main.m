@@ -79,15 +79,6 @@ float gScreenHeight = 720;
 
 int main(int argc, const char **argv) {
   printf("Hello\n");
-  NSString *launchPath = [NSBundle.mainBundle pathForResource:@"test"
-                                                       ofType:nil];
-  NSFileManager *filemgr;
-  NSString *currentpath;
-
-  filemgr = [[NSFileManager alloc] init];
-
-  currentpath = [filemgr currentDirectoryPath];
-  NSLog(@"haha %@", currentpath);
   AppDelegate *appDelegate = [[AppDelegate alloc] init];
   [[NSApplication sharedApplication] setDelegate:appDelegate];
   return NSApplicationMain(argc, argv);

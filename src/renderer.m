@@ -36,15 +36,17 @@ static struct {
   UniformBlock uniformBlock;
 } gRenderer;
 
+#if 0
 static int divideRounded(int n, int d) {
   int result = (n + d - 1) / d;
-  return d;
+  return result;
 }
 
 static int alignUp(int n, int alignment) {
-  int result = ((n + alignment - 1) / alignment) * alignment;
+  int result = divideRounded(n, alignment) * alignment;
   return result;
 }
+#endif
 
 void initRenderer(MTKView *view) {
   gRenderer.device = MTLCreateSystemDefaultDevice();
