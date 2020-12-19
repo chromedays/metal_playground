@@ -1,0 +1,2 @@
+clangd doesn't support single-module-compilation (a.k.a unity build)
+https://github.com/clangd/clangd/issues/45
