@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "global.h"
 #include "vmath.h"
+#include "gui.h"
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
 
@@ -101,9 +102,15 @@ void initRenderer(MTKView *view) {
   //                           NUM_BUFFERS_IN_FLIGHT
   //                   options:MTLResourceOptionCPUCacheModeDefault];
   //   gRenderer.uniformBlock.mvp = mat4Identity();
+
+  initGUI(gRenderer.device);
 }
 
 void render(MTKView *view, float dt) {
+
+  guiBeginFrame(view);
+  guiDemo();
+
   Mat4 projection =
       mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 1, 10.f);
   gRenderer.uniformBlock.projMat = projection;
@@ -154,6 +161,9 @@ void render(MTKView *view, float dt) {
                     vertexStart:0
                     vertexCount:1];
 #endif
+
+  guiEndFrameAndRender(commandBuffer, renderEncoder);
+
   [renderEncoder endEncoding];
   [commandBuffer presentDrawable:view.currentDrawable];
   [commandBuffer commit];

@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "gui.h"
 #import <AppKit/AppKit.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -42,6 +43,50 @@ float gScreenHeight = 720;
   mtkView.depthStencilPixelFormat = MTLPixelFormatDepth32Float;
   initRenderer(mtkView);
   mtkView.delegate = mtkViewDelegate;
+
+  [mtkView setPreferredFramesPerSecond:60];
+
+  NSTrackingArea *trackingArea = [[NSTrackingArea alloc]
+      initWithRect:NSZeroRect
+           options:NSTrackingMouseMoved | NSTrackingInVisibleRect |
+                   NSTrackingActiveAlways
+             owner:self
+          userInfo:nil];
+  [self.view addTrackingArea:trackingArea];
+  NSEventMask eventMask = NSEventMaskKeyDown | NSEventMaskKeyUp |
+                          NSEventMaskFlagsChanged | NSEventTypeScrollWheel;
+  [NSEvent
+      addLocalMonitorForEventsMatchingMask:eventMask
+                                   handler:^NSEvent *_Nullable(NSEvent *event) {
+                                     BOOL wantsCapture =
+                                         guiHandleOSXEvent(event, mtkView);
+                                     if (event.type == NSEventTypeKeyDown &&
+                                         wantsCapture) {
+                                       return nil;
+                                     } else {
+                                       return event;
+                                     }
+                                   }];
+}
+
+- (void)mouseMoved:(NSEvent *)event {
+  guiHandleOSXEvent(event, mtkView);
+}
+
+- (void)mouseDown:(NSEvent *)event {
+  guiHandleOSXEvent(event, mtkView);
+}
+
+- (void)mouseUp:(NSEvent *)event {
+  guiHandleOSXEvent(event, mtkView);
+}
+
+- (void)mouseDragged:(NSEvent *)event {
+  guiHandleOSXEvent(event, mtkView);
+}
+
+- (void)scrollWheel:(NSEvent *)event {
+  guiHandleOSXEvent(event, mtkView);
 }
 
 - (void)setRepresentedObject:(id)representedObject {
