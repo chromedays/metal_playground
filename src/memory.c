@@ -27,9 +27,12 @@ void *allocate(int size, int alignment) {
 }
 
 void *allocateZeroes(int size, int alignment) {
-  void *mem = allocate(size, alignment);
+  if (alignment < MIN_ALIGNMENT) {
+    alignment = MIN_ALIGNMENT;
+  }
+  size = alignUp(size, alignment);
+  void *mem = aligned_alloc(alignment, size);
   memset(mem, 0, size);
-
   return mem;
 }
 

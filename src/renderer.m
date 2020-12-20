@@ -20,7 +20,6 @@ typedef uint32_t VertexIndex;
 #define NUM_BUFFERS_IN_FLIGHT 3
 
 typedef struct _UniformBlock {
-  Mat4 modelMat;
   Mat4 viewMat;
   Mat4 projMat;
 } UniformBlock;
@@ -40,9 +39,39 @@ typedef struct _Mesh {
   SubMesh *subMeshes;
 } Mesh;
 
+typedef struct _Transform {
+  // Float3 position;
+  // Float3 scale;
+  // Float4 rotation;
+  Mat4 matrix;
+} Transform;
+
+typedef struct _SceneNode {
+  int parent;
+
+  Transform localTransform;
+  Transform worldTransform;
+
+  int mesh;
+
+  int *childNodes;
+  int numChildNodes;
+} SceneNode;
+
+typedef struct _Scene {
+  int numNodes;
+  int *nodes;
+} Scene;
+
 typedef struct _Model {
   int numMeshes;
   Mesh *meshes;
+
+  int numNodes;
+  SceneNode *nodes;
+
+  int numScenes;
+  Scene *scenes;
 
   id<MTLBuffer> gpuVertexBuffer;
   id<MTLBuffer> gpuIndexBuffer;
@@ -122,6 +151,8 @@ static struct {
   //   id<MTLBuffer> uniformBuffer;
 
   UniformBlock uniformBlock;
+
+  Mat4 globalTransform;
 } gRenderer;
 
 void loadGLTFModel(Model *model, NSString *basePath) {
@@ -159,7 +190,6 @@ void loadGLTFModel(Model *model, NSString *basePath) {
       indexBufferSize += subMesh->numIndices * sizeof(VertexIndex);
     }
   }
-  cgltf_free(gltf);
 
   model->gpuVertexBuffer = [gRenderer.device
       newBufferWithLength:vertexBufferSize
@@ -188,29 +218,113 @@ void loadGLTFModel(Model *model, NSString *basePath) {
       indexOffsetInBytes += subMesh->numIndices * sizeof(VertexIndex);
     }
   }
+
+  model->numNodes = gltf->nodes_count;
+  model->nodes = MALLOC_ARRAY_ZEROES(SceneNode, model->numNodes);
+  for (cgltf_size nodeIndex = 0; nodeIndex < gltf->nodes_count; ++nodeIndex) {
+    cgltf_node *gltfNode = &gltf->nodes[nodeIndex];
+    SceneNode *node = &model->nodes[nodeIndex];
+
+    cgltf_node_transform_local(gltfNode,
+                               (float *)node->localTransform.matrix.cols);
+    cgltf_node_transform_world(gltfNode,
+                               (float *)node->worldTransform.matrix.cols);
+
+    if (gltfNode->parent) {
+      node->parent = gltfNode->parent - gltf->nodes;
+    } else {
+      node->parent = -1;
+    }
+
+    if (gltfNode->mesh) {
+      node->mesh = gltfNode->mesh - gltf->meshes;
+    } else {
+      node->mesh = -1;
+    }
+
+    if (gltfNode->children_count > 0) {
+      node->numChildNodes = gltfNode->children_count;
+      node->childNodes = MALLOC_ARRAY(int, node->numChildNodes);
+      for (cgltf_size childIndex = 0; childIndex < gltfNode->children_count;
+           ++childIndex) {
+        node->childNodes[childIndex] =
+            gltfNode->children[childIndex] - gltf->nodes;
+      }
+    }
+  }
+
+  model->numScenes = gltf->scenes_count;
+  model->scenes = MALLOC_ARRAY_ZEROES(Scene, model->numScenes);
+
+  for (cgltf_size sceneIndex = 0; sceneIndex < gltf->scenes_count;
+       ++sceneIndex) {
+    cgltf_scene *gltfScene = &gltf->scenes[sceneIndex];
+    Scene *scene = &model->scenes[sceneIndex];
+
+    if (gltfScene->nodes_count > 0) {
+      scene->numNodes = gltfScene->nodes_count;
+      scene->nodes = MALLOC_ARRAY(int, scene->numNodes);
+
+      for (cgltf_size nodeIndex = 0; nodeIndex < gltfScene->nodes_count;
+           ++nodeIndex) {
+        cgltf_node *gltfNode = gltfScene->nodes[nodeIndex];
+        scene->nodes[nodeIndex] = gltfNode - gltf->nodes;
+      }
+    }
+  }
+
+  cgltf_free(gltf);
 }
 
 void destroyMesh() {}
+
+void renderMesh(const Model *model, const Mesh *mesh,
+                id<MTLRenderCommandEncoder> renderEncoder) {
+  for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
+       ++subMeshIndex) {
+    SubMesh *subMesh = &mesh->subMeshes[subMeshIndex];
+
+    [renderEncoder setVertexBufferOffset:subMesh->gpuVertexBufferOffsetInBytes
+                                 atIndex:0];
+
+    [renderEncoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle
+                              indexCount:subMesh->numIndices
+                               indexType:METAL_INDEX_TYPE
+                             indexBuffer:model->gpuIndexBuffer
+                       indexBufferOffset:subMesh->gpuIndexBufferOffsetInBytes];
+  }
+}
+
+void renderSceneNode(const Model *model, const SceneNode *node,
+                     id<MTLRenderCommandEncoder> renderEncoder) {
+
+  Mat4 transform =
+      mat4Multiply(gRenderer.globalTransform, node->worldTransform.matrix);
+
+  [renderEncoder setVertexBytes:&transform length:sizeof(Mat4) atIndex:2];
+
+  if (node->mesh >= 0) {
+    Mesh *mesh = &model->meshes[node->mesh];
+    renderMesh(model, mesh, renderEncoder);
+  }
+
+  if (node->numChildNodes > 0) {
+    for (int i = 0; i < node->numChildNodes; ++i) {
+      SceneNode *childNode = &model->nodes[node->childNodes[i]];
+      renderSceneNode(model, childNode, renderEncoder);
+    }
+  }
+}
 
 void renderModel(const Model *model,
                  id<MTLRenderCommandEncoder> renderEncoder) {
   [renderEncoder setVertexBuffer:model->gpuVertexBuffer offset:0 atIndex:0];
 
-  for (int meshIndex = 0; meshIndex < model->numMeshes; ++meshIndex) {
-    Mesh *mesh = &model->meshes[meshIndex];
-    for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
-         ++subMeshIndex) {
-      SubMesh *subMesh = &mesh->subMeshes[subMeshIndex];
-
-      [renderEncoder setVertexBufferOffset:subMesh->gpuVertexBufferOffsetInBytes
-                                   atIndex:0];
-
-      [renderEncoder
-          drawIndexedPrimitives:MTLPrimitiveTypeTriangle
-                     indexCount:subMesh->numIndices
-                      indexType:METAL_INDEX_TYPE
-                    indexBuffer:model->gpuIndexBuffer
-              indexBufferOffset:subMesh->gpuIndexBufferOffsetInBytes];
+  for (int sceneIndex = 0; sceneIndex < model->numScenes; ++sceneIndex) {
+    Scene *scene = &model->scenes[sceneIndex];
+    for (int nodeIndex = 0; nodeIndex < scene->numNodes; ++nodeIndex) {
+      SceneNode *node = &model->nodes[scene->nodes[nodeIndex]];
+      renderSceneNode(model, node, renderEncoder);
     }
   }
 }
@@ -325,7 +439,7 @@ void render(MTKView *view, float dt) {
     [renderEncoder setTriangleFillMode:MTLTriangleFillModeFill];
   }
 
-  gRenderer.uniformBlock.modelMat = mat4Multiply(
+  gRenderer.globalTransform = mat4Multiply(
       mat4Multiply(mat4Translate(gGUI.pos),
                    quatToMat4(quatRotateAroundAxis(gGUI.axis, gGUI.angle))),
       mat4Scale(gGUI.scale));

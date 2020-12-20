@@ -14,18 +14,22 @@ struct VertexOut {
 };
 
 struct UniformBlock {
-  float4x4 modelMat;
   float4x4 viewMat;
   float4x4 projMat;
+};
+
+struct PerDraw {
+  float4x4 modelMat;
 };
 
 vertex VertexOut vertex_main(const device Vertex *vertices [[buffer(0)]],
                              const constant UniformBlock *uniforms
                              [[buffer(1)]],
+                             const constant PerDraw* uniformsPerDraw [[buffer(2)]],
                              uint vid [[vertex_id]]) {
   VertexOut vertexOut;
   vertexOut.position =
-      uniforms->projMat * uniforms->viewMat * uniforms->modelMat * vertices[vid].position;
+      uniforms->projMat * uniforms->viewMat * uniformsPerDraw->modelMat * vertices[vid].position;
   vertexOut.color = vertices[vid].color;
   vertexOut.pointSize = 10;
   return vertexOut;
