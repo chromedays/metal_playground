@@ -5,7 +5,7 @@ Compiler('Compiler-Clang') {
 .clangBaseConfig = [
     .compiler = 'Compiler-Clang'
     .linker = '/usr/bin/clang'
-    .compilerOptions = ' -o "%2" "%1" -c -g -O0 -Wall -Wextra -fobjc-arc -fdiagnostics-absolute-paths --target=arm64-apple-macos11'
+    .compilerOptions = ' -o "%2" "%1" -c -g -O0 -Wall -Wextra -fobjc-arc -fdiagnostics-absolute-paths --target=arm64-apple-macos11 -DDEBUG'
     .objcCompilerFlags = ' -x objective-c -std=c11'
     .objcppCompilerFlags = ' -x objective-c++ -std=c++17'
     .unityFlags = ' -Wno-#pragma-messages'

@@ -4,6 +4,7 @@ using namespace metal;
 struct Vertex {
   float4 position [[position]];
   float4 color;
+  float2 texcoord;
 };
 
 struct VertexOut {

@@ -47,6 +47,10 @@ mkdir "${OUTPUT}.app"
 # ls -a
 cp "${OUTPUT}" "${OUTPUT}.app/${OUTPUT}"
 cp ../resources/Info.plist "${OUTPUT}.app/Info.plist"
+mkdir "${OUTPUT}.app/Resources"
+mv shaders.metallib "${OUTPUT}.app/Resources/shaders.metallib"
+cp -R ../resources/AnimatedCube "${OUTPUT}.app/Resources/AnimatedCube"
+cp -R ../resources/BoxVertexColors "${OUTPUT}.app/Resources/BoxVertexColors"
 
 trash "${OUTPUT}"
 

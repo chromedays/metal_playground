@@ -19,6 +19,7 @@ float gScreenHeight = 720;
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {
   gScreenWidth = size.width;
   gScreenHeight = size.height;
+  onResizeWindow();
 }
 @end
 
@@ -40,6 +41,7 @@ float gScreenHeight = 720;
   [super viewDidLoad];
 
   mtkView = (MTKView *)self.view;
+  mtkView.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
   mtkView.depthStencilPixelFormat = MTLPixelFormatDepth32Float;
   initRenderer(mtkView);
   mtkView.delegate = mtkViewDelegate;
@@ -124,27 +126,13 @@ float gScreenHeight = 720;
 
 int main(int argc, const char **argv) {
   printf("Hello\n");
+
+  NSBundle *mainBundle = [NSBundle mainBundle];
+  NSLog(@"Arch: %@", mainBundle.executableArchitectures);
+  NSLog(@"Exe path: %@", mainBundle.executablePath);
+  NSLog(@"Exe url: %@", mainBundle.executableURL);
+
   AppDelegate *appDelegate = [[AppDelegate alloc] init];
   [[NSApplication sharedApplication] setDelegate:appDelegate];
   return NSApplicationMain(argc, argv);
-  // gRunning = true;
-
-  // while (gRunning) {
-  //   NSEvent *event;
-
-  //   do {
-  //     event = [NSApp nextEventMatchingMask:NSEventMaskAny
-  //                                untilDate:nil
-  //                                   inMode:NSDefaultRunLoopMode
-  //                                  dequeue:YES];
-
-  //     switch (event.type) {
-  //     default:
-  //       [NSApp sendEvent:event];
-  //     }
-
-  //   } while (event != nil);
-
-  //   [metalView draw];
-  // }
 }
