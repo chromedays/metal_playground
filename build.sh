@@ -53,6 +53,8 @@ cp -R ../resources/AnimatedCube "${OUTPUT}.app/Resources/AnimatedCube"
 cp -R ../resources/BoxVertexColors "${OUTPUT}.app/Resources/BoxVertexColors"
 cp -R ../resources/Avocado "${OUTPUT}.app/Resources/Avocado"
 cp -R ../resources/CesiumMilkTruck "${OUTPUT}.app/Resources/CesiumMilkTruck"
+cp -R ../resources/EnvironmentTest "${OUTPUT}.app/Resources/EnvironmentTest"
+cp -R ../resources/Sponza "${OUTPUT}.app/Resources/Sponza"
 
 trash "${OUTPUT}"
 

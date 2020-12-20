@@ -148,7 +148,6 @@ static struct {
 
   id<MTLBuffer> vertexBuffer;
   id<MTLBuffer> indexBuffer;
-  //   id<MTLBuffer> uniformBuffer;
 
   UniformBlock uniformBlock;
 
@@ -371,42 +370,11 @@ void initRenderer(MTKView *view) {
   gRenderer.depthStencilState =
       [gRenderer.device newDepthStencilStateWithDescriptor:depthStencilDesc];
 
-  // Vertex vertices[] = {{.position = {-1, 1, 1, 1}, .color = {0, 1, 1, 1}},
-  //                      {.position = {-1, -1, 1, 1}, .color = {0, 0, 1, 1}},
-  //                      {.position = {1, -1, 1, 1}, .color = {1, 0, 1, 1}},
-  //                      {.position = {1, 1, 1, 1}, .color = {1, 1, 1, 1}},
-  //                      {.position = {-1, 1, -1, 1}, .color = {0, 1, 0, 1}},
-  //                      {.position = {-1, -1, -1, 1}, .color = {0, 0, 0, 1}},
-  //                      {.position = {1, -1, -1, 1}, .color = {1, 0, 0, 1}},
-  //                      {.position = {1, 1, -1, 1}, .color = {1, 1, 0, 1}}};
-
-  // VertexIndex indices[] = {3, 2, 6, 6, 7, 3, 4, 5, 1, 1, 0, 4,
-  //                          4, 0, 3, 3, 7, 4, 1, 5, 6, 6, 2, 1,
-  //                          0, 1, 2, 2, 3, 0, 7, 6, 5, 5, 4, 7};
-
-  NSString *gltfBasePath = [mainBundle pathForResource:@"CesiumMilkTruck"
-                                                ofType:nil];
+  NSString *gltfBasePath = [mainBundle pathForResource:@"Sponza" ofType:nil];
   loadGLTFModel(&gRenderer.model, gltfBasePath);
   initVertexAndIndexBufferWithSubMesh(&gRenderer.vertexBuffer,
                                       &gRenderer.indexBuffer,
                                       &gRenderer.model.meshes[0].subMeshes[0]);
-
-  // gRenderer.vertexBuffer = [gRenderer.device
-  //     newBufferWithBytes:gRenderer.model.meshes[0].subMeshes[0].indices
-  //                 length:sizeof(VertexIndex) *
-  //                        gRenderer.model.meshes[0].subMeshes[0].numIndices
-  //                options:MTLResourceOptionCPUCacheModeDefault];
-  // gRenderer.indexBuffer = [gRenderer.device
-  //     newBufferWithBytes:gRenderer.model.meshes[0].subMeshes[0].vertices
-  //                 length:sizeof(Vertex) *
-  //                        gRenderer.model.meshes[0].subMeshes[0].numVertices
-  //                options:MTLResourceOptionCPUCacheModeDefault];
-  //   gRenderer.uniformBuffer = [gRenderer.device
-  //       newBufferWithLength:alignUp(sizeof(UniformBlock),
-  //                                   METAL_CONSTANT_ALIGNMENT) *
-  //                           NUM_BUFFERS_IN_FLIGHT
-  //                   options:MTLResourceOptionCPUCacheModeDefault];
-  //   gRenderer.uniformBlock.mvp = mat4Identity();
 
   initGUI(gRenderer.device);
 }
