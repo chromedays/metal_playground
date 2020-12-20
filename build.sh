@@ -51,6 +51,8 @@ mkdir "${OUTPUT}.app/Resources"
 mv shaders.metallib "${OUTPUT}.app/Resources/shaders.metallib"
 cp -R ../resources/AnimatedCube "${OUTPUT}.app/Resources/AnimatedCube"
 cp -R ../resources/BoxVertexColors "${OUTPUT}.app/Resources/BoxVertexColors"
+cp -R ../resources/Avocado "${OUTPUT}.app/Resources/Avocado"
+cp -R ../resources/CesiumMilkTruck "${OUTPUT}.app/Resources/CesiumMilkTruck"
 
 trash "${OUTPUT}"
 

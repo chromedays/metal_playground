@@ -1,12 +1,17 @@
 #pragma once
 #include "util.h"
+#include "vmath.h"
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
 
 C_INTERFACE_BEGIN
 
 typedef struct _GUI {
+  Float3 pos;
+  Float3 scale;
+  Float3 axis;
   float angle;
+  bool wireframe;
 } GUI;
 
 extern GUI gGUI;

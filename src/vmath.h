@@ -36,6 +36,9 @@ Mat4 mat4RotateY(float rad);
 Mat4 mat4LookAt(const Float3 eye, const Float3 target, const Float3 upAxis);
 Mat4 mat4Perspective(float fov, float aspectRatio, float nearZ, float farZ);
 
+Mat4 quatToMat4(Float4 q);
+Float4 quatRotateAroundAxis(Float3 axis, float angleRad);
+
 C_INTERFACE_END
 
 #endif /* vmath_h */

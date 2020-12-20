@@ -21,6 +21,7 @@ typedef uint32_t VertexIndex;
 
 typedef struct _UniformBlock {
   Mat4 modelMat;
+  Mat4 viewMat;
   Mat4 projMat;
 } UniformBlock;
 
@@ -29,15 +30,22 @@ typedef struct _SubMesh {
   Vertex *vertices;
   int numIndices;
   VertexIndex *indices;
+
+  int gpuVertexBufferOffsetInBytes;
+  int gpuIndexBufferOffsetInBytes;
 } SubMesh;
 
 typedef struct _Mesh {
+  int numSubMeshes;
   SubMesh *subMeshes;
 } Mesh;
 
 typedef struct _Model {
   int numMeshes;
   Mesh *meshes;
+
+  id<MTLBuffer> gpuVertexBuffer;
+  id<MTLBuffer> gpuIndexBuffer;
 } Model;
 
 static void initSubMeshFromGLTFPrimitive(SubMesh *subMesh,
@@ -97,49 +105,6 @@ static void initSubMeshFromGLTFPrimitive(SubMesh *subMesh,
   }
 }
 
-void loadGLTFModel(Model *model, NSString *basePath) {
-  LOG("Loading gltf (%s)", [basePath UTF8String]);
-
-  cgltf_options options = {0};
-  NSString *filePath =
-      [basePath stringByAppendingPathComponent:
-                    [[basePath lastPathComponent]
-                        stringByAppendingPathExtension:@"gltf"]];
-  cgltf_data *gltf;
-  cgltf_result gltfLoadResult =
-      cgltf_parse_file(&options, [filePath UTF8String], &gltf);
-  ASSERT(gltfLoadResult == cgltf_result_success);
-  cgltf_load_buffers(&options, gltf, [filePath UTF8String]);
-
-  model->numMeshes = gltf->meshes_count;
-  model->meshes = MALLOC_ARRAY_ZEROES(Mesh, model->numMeshes);
-
-  for (cgltf_size meshIndex = 0; meshIndex < gltf->meshes_count; ++meshIndex) {
-    cgltf_mesh *mesh = &gltf->meshes[meshIndex];
-
-    model->meshes[meshIndex].subMeshes =
-        MALLOC_ARRAY(SubMesh, mesh->primitives_count);
-
-    for (cgltf_size primIndex = 0; primIndex < mesh->primitives_count;
-         ++primIndex) {
-      model->meshes[meshIndex].subMeshes[primIndex] = (SubMesh){0};
-      initSubMeshFromGLTFPrimitive(
-          &model->meshes[meshIndex].subMeshes[primIndex],
-          &mesh->primitives[primIndex]);
-    }
-  }
-
-  for (cgltf_size i = 0; i < gltf->buffers_count; ++i) {
-    cgltf_buffer *buffer = &gltf->buffers[i];
-    ASSERT(buffer->data);
-    LOG("Parsing gltf buffer (%s)", gltf->buffers[i].uri);
-  }
-
-  cgltf_free(gltf);
-}
-
-void destroyMesh() {}
-
 static struct {
   id<MTLDevice> device;
   id<MTLCommandQueue> queue;
@@ -159,17 +124,96 @@ static struct {
   UniformBlock uniformBlock;
 } gRenderer;
 
-#if 0
-static int divideRounded(int n, int d) {
-  int result = (n + d - 1) / d;
-  return result;
+void loadGLTFModel(Model *model, NSString *basePath) {
+  LOG("Loading gltf (%s)", [basePath UTF8String]);
+
+  cgltf_options options = {0};
+  NSString *filePath =
+      [basePath stringByAppendingPathComponent:
+                    [[basePath lastPathComponent]
+                        stringByAppendingPathExtension:@"gltf"]];
+  cgltf_data *gltf;
+  cgltf_result gltfLoadResult =
+      cgltf_parse_file(&options, [filePath UTF8String], &gltf);
+  ASSERT(gltfLoadResult == cgltf_result_success);
+  cgltf_load_buffers(&options, gltf, [filePath UTF8String]);
+
+  model->numMeshes = gltf->meshes_count;
+  model->meshes = MALLOC_ARRAY_ZEROES(Mesh, model->numMeshes);
+
+  int vertexBufferSize = 0;
+  int indexBufferSize = 0;
+
+  for (cgltf_size meshIndex = 0; meshIndex < gltf->meshes_count; ++meshIndex) {
+    cgltf_mesh *gltfMesh = &gltf->meshes[meshIndex];
+    Mesh *mesh = &model->meshes[meshIndex];
+
+    mesh->numSubMeshes = gltfMesh->primitives_count;
+    mesh->subMeshes = MALLOC_ARRAY_ZEROES(SubMesh, mesh->numSubMeshes);
+
+    for (cgltf_size primIndex = 0; primIndex < gltfMesh->primitives_count;
+         ++primIndex) {
+      SubMesh *subMesh = &mesh->subMeshes[primIndex];
+      initSubMeshFromGLTFPrimitive(subMesh, &gltfMesh->primitives[primIndex]);
+      vertexBufferSize += subMesh->numVertices * sizeof(Vertex);
+      indexBufferSize += subMesh->numIndices * sizeof(VertexIndex);
+    }
+  }
+  cgltf_free(gltf);
+
+  model->gpuVertexBuffer = [gRenderer.device
+      newBufferWithLength:vertexBufferSize
+                  options:MTLResourceCPUCacheModeDefaultCache];
+  model->gpuIndexBuffer = [gRenderer.device
+      newBufferWithLength:indexBufferSize
+                  options:MTLResourceCPUCacheModeDefaultCache];
+  uint8_t *gpuVertexBufferMem = (uint8_t *)[model->gpuVertexBuffer contents];
+  uint8_t *gpuIndexBufferMem = (uint8_t *)[model->gpuIndexBuffer contents];
+
+  int vertexOffsetInBytes = 0;
+  int indexOffsetInBytes = 0;
+
+  for (int meshIndex = 0; meshIndex < model->numMeshes; ++meshIndex) {
+    Mesh *mesh = &model->meshes[meshIndex];
+    for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
+         ++subMeshIndex) {
+      SubMesh *subMesh = &mesh->subMeshes[subMeshIndex];
+      memcpy(gpuVertexBufferMem + vertexOffsetInBytes, subMesh->vertices,
+             subMesh->numVertices * sizeof(Vertex));
+      memcpy(gpuIndexBufferMem + indexOffsetInBytes, subMesh->indices,
+             subMesh->numIndices * sizeof(VertexIndex));
+      subMesh->gpuVertexBufferOffsetInBytes = vertexOffsetInBytes;
+      subMesh->gpuIndexBufferOffsetInBytes = indexOffsetInBytes;
+      vertexOffsetInBytes += subMesh->numVertices * sizeof(Vertex);
+      indexOffsetInBytes += subMesh->numIndices * sizeof(VertexIndex);
+    }
+  }
 }
 
-static int alignUp(int n, int alignment) {
-  int result = divideRounded(n, alignment) * alignment;
-  return result;
+void destroyMesh() {}
+
+void renderModel(const Model *model,
+                 id<MTLRenderCommandEncoder> renderEncoder) {
+  [renderEncoder setVertexBuffer:model->gpuVertexBuffer offset:0 atIndex:0];
+
+  for (int meshIndex = 0; meshIndex < model->numMeshes; ++meshIndex) {
+    Mesh *mesh = &model->meshes[meshIndex];
+    for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
+         ++subMeshIndex) {
+      SubMesh *subMesh = &mesh->subMeshes[subMeshIndex];
+
+      [renderEncoder setVertexBufferOffset:subMesh->gpuVertexBufferOffsetInBytes
+                                   atIndex:0];
+
+      [renderEncoder
+          drawIndexedPrimitives:MTLPrimitiveTypeTriangle
+                     indexCount:subMesh->numIndices
+                      indexType:METAL_INDEX_TYPE
+                    indexBuffer:model->gpuIndexBuffer
+              indexBufferOffset:subMesh->gpuIndexBufferOffsetInBytes];
+    }
+  }
 }
-#endif
 
 void initVertexAndIndexBufferWithSubMesh(__strong id<MTLBuffer> *vertexBuffer,
                                          __strong id<MTLBuffer> *indexBuffer,
@@ -226,7 +270,7 @@ void initRenderer(MTKView *view) {
   //                          4, 0, 3, 3, 7, 4, 1, 5, 6, 6, 2, 1,
   //                          0, 1, 2, 2, 3, 0, 7, 6, 5, 5, 4, 7};
 
-  NSString *gltfBasePath = [mainBundle pathForResource:@"BoxVertexColors"
+  NSString *gltfBasePath = [mainBundle pathForResource:@"CesiumMilkTruck"
                                                 ofType:nil];
   loadGLTFModel(&gRenderer.model, gltfBasePath);
   initVertexAndIndexBufferWithSubMesh(&gRenderer.vertexBuffer,
@@ -254,12 +298,12 @@ void initRenderer(MTKView *view) {
 }
 
 void render(MTKView *view, float dt) {
-
   guiBeginFrame(view);
   doGUI();
 
+  gRenderer.uniformBlock.viewMat = mat4Translate((Float3){0, 0, -5});
   Mat4 projection =
-      mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 1, 10.f);
+      mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 0.1f, 1000.f);
   gRenderer.uniformBlock.projMat = projection;
 
   id<MTLCommandBuffer> commandBuffer = [gRenderer.queue commandBuffer];
@@ -274,25 +318,23 @@ void render(MTKView *view, float dt) {
   [renderEncoder setDepthStencilState:gRenderer.depthStencilState];
 
   [renderEncoder setFrontFacingWinding:MTLWindingCounterClockwise];
-  [renderEncoder setCullMode:MTLCullModeNone];
-  [renderEncoder setTriangleFillMode:MTLTriangleFillModeFill];
+  [renderEncoder setCullMode:MTLCullModeBack];
+  if (gGUI.wireframe) {
+    [renderEncoder setTriangleFillMode:MTLTriangleFillModeLines];
+  } else {
+    [renderEncoder setTriangleFillMode:MTLTriangleFillModeFill];
+  }
 
   gRenderer.uniformBlock.modelMat = mat4Multiply(
-      mat4Translate((Float3){0, 0, -5.1f}), mat4RotateY(gGUI.angle));
-  [renderEncoder setVertexBuffer:gRenderer.vertexBuffer offset:0 atIndex:0];
+      mat4Multiply(mat4Translate(gGUI.pos),
+                   quatToMat4(quatRotateAroundAxis(gGUI.axis, gGUI.angle))),
+      mat4Scale(gGUI.scale));
   [renderEncoder setVertexBytes:&gRenderer.uniformBlock
                          length:sizeof(gRenderer.uniformBlock)
                         atIndex:1];
-  // [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
-  //                   vertexStart:0
-  //                   vertexCount:3];
-  NSUInteger numIndices = 36;
-  [renderEncoder drawIndexedPrimitives:MTLPrimitiveTypeTriangle
-                            indexCount:numIndices
-                             indexType:METAL_INDEX_TYPE
-                           indexBuffer:gRenderer.indexBuffer
-                     indexBufferOffset:0];
+  renderModel(&gRenderer.model, renderEncoder);
 
+  [renderEncoder setTriangleFillMode:MTLTriangleFillModeFill];
   guiEndFrameAndRender(commandBuffer, renderEncoder);
 
   [renderEncoder endEncoding];

@@ -42,7 +42,11 @@ float float3Length(const Float3 v) {
 }
 
 Float3 float3Normalize(const Float3 v) {
-  Float3 normalized = v / float3Length(v);
+  float len = float3Length(v);
+  Float3 normalized = v;
+  if (len > 0) {
+    normalized /= len;
+  }
   return normalized;
 }
 
@@ -155,4 +159,28 @@ Mat4 mat4Perspective(float fov, float aspectRatio, float nearZ, float farZ) {
   }};
 
   return persp;
+}
+
+Mat4 quatToMat4(Float4 q) {
+  Mat4 mat = {{
+      {1 - 2 * (q.y * q.y + q.z * q.z), 2 * (q.x * q.y + q.w * q.z),
+       2 * (q.x * q.z - q.w * q.y), 0},
+      {2 * (q.x * q.y - q.w * q.z), 1 - 2 * (q.x * q.x + q.z * q.z),
+       2 * (q.y * q.z + q.w * q.x), 0},
+      {2 * (q.x * q.z + q.w * q.y), 2 * (q.y * q.z - q.w * q.x),
+       1 - 2 * (q.x * q.x + q.y * q.y), 0},
+      {0, 0, 0, 1},
+  }};
+
+  return mat;
+}
+
+Float4 quatRotateAroundAxis(Float3 axis, float angleRad) {
+  float halfAngle = angleRad * 0.5f;
+
+  Float4 quat;
+  quat.xyz = float3Normalize(axis) * sinf(halfAngle);
+  quat.w = cosf(halfAngle);
+
+  return quat;
 }
