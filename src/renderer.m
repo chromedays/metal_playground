@@ -289,7 +289,27 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   cgltf_free(gltf);
 }
 
-void destroyMesh() {}
+void destroyModel(Model *model) {
+  for (int i = 0; i < model->numScenes; ++i) {
+    FREE(model->scenes[i].nodes);
+  }
+  FREE(model->scenes);
+
+  for (int i = 0; i < model->numNodes; ++i) {
+    FREE(model->nodes[i].childNodes);
+  }
+  FREE(model->nodes);
+
+  for (int i = 0; i < model->numMeshes; ++i) {
+    for (int j = 0; j < model->meshes[i].numSubMeshes; ++j) {
+      FREE(model->meshes[i].subMeshes[j].vertices);
+      FREE(model->meshes[i].subMeshes[j].indices);
+    }
+    FREE(model->meshes[i].subMeshes);
+  }
+
+  FREE(model->meshes);
+}
 
 void renderMesh(const Model *model, const Mesh *mesh,
                 id<MTLRenderCommandEncoder> renderEncoder) {
