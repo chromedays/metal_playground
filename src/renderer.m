@@ -148,13 +148,13 @@ static void initSubMeshFromGLTFPrimitive(SubMesh *subMesh,
   }
 }
 
-typedef struct _Camera {
+typedef struct _OrbitCamera {
   float distance;
   float theta;
   float phi;
-} Camera;
+} OrbitCamera;
 
-Mat4 getCameraMatrix(const Camera *cam) {
+Mat4 getOrbitCameraMatrix(const OrbitCamera *cam) {
   Float3 camPos = sphericalToCartesian(cam->distance, degToRad(cam->theta),
                                        degToRad(cam->phi));
   Mat4 lookAt = mat4LookAt(camPos, (Float3){0}, (Float3){0, 1, 0});
@@ -173,7 +173,7 @@ static struct {
 
   Model model;
 
-  Camera cam;
+  OrbitCamera cam;
 
   UniformsPerView uniformsPerView;
 } gRenderer;
@@ -433,7 +433,7 @@ void render(MTKView *view, float dt) {
   guiBeginFrame(view);
   doGUI();
 
-  gRenderer.uniformsPerView.viewMat = getCameraMatrix(&gRenderer.cam);
+  gRenderer.uniformsPerView.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
   Mat4 projection =
       mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 0.1f, 1000.f);
   gRenderer.uniformsPerView.projMat = projection;
