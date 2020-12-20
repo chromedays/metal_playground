@@ -5,12 +5,13 @@ struct Vertex {
   float3 position;
   float4 color;
   float2 texcoord;
+  float3 normal;
 };
 
 struct VertexOut {
   float4 position [[position]];
   float4 color;
-  float pointSize [[point_size]];
+  float3 normal;
 };
 
 struct UniformBlock {
@@ -20,6 +21,7 @@ struct UniformBlock {
 
 struct PerDraw {
   float4x4 modelMat;
+  float4x4 normalMat;
 };
 
 vertex VertexOut vertex_main(const device Vertex *vertices [[buffer(0)]],
@@ -31,11 +33,16 @@ vertex VertexOut vertex_main(const device Vertex *vertices [[buffer(0)]],
   vertexOut.position =
       uniforms->projMat * uniforms->viewMat * uniformsPerDraw->modelMat * float4(vertices[vid].position, 1);
   vertexOut.color = vertices[vid].color;
-  vertexOut.pointSize = 10;
+  float3x3 normalMat33;
+  normalMat33[0] = uniformsPerDraw->normalMat[0].xyz;
+  normalMat33[1] = uniformsPerDraw->normalMat[1].xyz;
+  normalMat33[2] = uniformsPerDraw->normalMat[2].xyz;
+  vertexOut.normal = normalMat33 * vertices[vid].normal;
   return vertexOut;
 }
 
 fragment half4 fragment_main(VertexOut inVertex [[stage_in]]) {
   // return half4(inVertex.color);
-  return half4(1, 1, 1, 1);
+  // return half4(1, 1, 1, 1);
+  return half4(half3(inVertex.normal), 1);
 }

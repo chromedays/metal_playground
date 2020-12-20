@@ -29,6 +29,8 @@ typedef struct _Mat4 {
 
 Float4 mat4Row(const Mat4 mat, int n);
 Mat4 mat4Multiply(const Mat4 a, const Mat4 b);
+Mat4 mat4Inverse(Mat4 m);
+Mat4 mat4Transpose(Mat4 m);
 Mat4 mat4Identity();
 Mat4 mat4Translate(Float3 position);
 Mat4 mat4Scale(Float3 scale);

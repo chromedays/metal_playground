@@ -78,6 +78,158 @@ Mat4 mat4Multiply(const Mat4 a, const Mat4 b) {
   return result;
 }
 
+Mat4 mat4Adjugate(Mat4 m) {
+  Mat4 adjugate = {{{m.cols[1].y * m.cols[2].z * m.cols[3].w +
+                         m.cols[3].y * m.cols[1].z * m.cols[2].w +
+                         m.cols[2].y * m.cols[3].z * m.cols[1].w -
+                         m.cols[1].y * m.cols[3].z * m.cols[2].w -
+                         m.cols[2].y * m.cols[1].z * m.cols[3].w -
+                         m.cols[3].y * m.cols[2].z * m.cols[1].w,
+                     m.cols[0].y * m.cols[3].z * m.cols[2].w +
+                         m.cols[2].y * m.cols[0].z * m.cols[3].w +
+                         m.cols[3].y * m.cols[2].z * m.cols[0].w -
+                         m.cols[3].y * m.cols[0].z * m.cols[2].w -
+                         m.cols[2].y * m.cols[3].z * m.cols[0].w -
+                         m.cols[0].y * m.cols[2].z * m.cols[3].w,
+                     m.cols[0].y * m.cols[1].z * m.cols[3].w +
+                         m.cols[3].y * m.cols[0].z * m.cols[1].w +
+                         m.cols[1].y * m.cols[3].z * m.cols[0].w -
+                         m.cols[0].y * m.cols[3].z * m.cols[1].w -
+                         m.cols[1].y * m.cols[0].z * m.cols[3].w -
+                         m.cols[3].y * m.cols[1].z * m.cols[0].w,
+                     m.cols[0].y * m.cols[2].z * m.cols[1].w +
+                         m.cols[1].y * m.cols[0].z * m.cols[2].w +
+                         m.cols[2].y * m.cols[1].z * m.cols[0].w -
+                         m.cols[0].y * m.cols[1].z * m.cols[2].w -
+                         m.cols[2].y * m.cols[0].z * m.cols[1].w -
+                         m.cols[1].y * m.cols[2].z * m.cols[0].w},
+                    {m.cols[1].z * m.cols[3].w * m.cols[2].x +
+                         m.cols[2].z * m.cols[1].w * m.cols[3].x +
+                         m.cols[3].z * m.cols[2].w * m.cols[1].x -
+                         m.cols[1].z * m.cols[2].w * m.cols[3].x -
+                         m.cols[3].z * m.cols[1].w * m.cols[2].x -
+                         m.cols[2].z * m.cols[3].w * m.cols[1].x,
+                     m.cols[0].z * m.cols[2].w * m.cols[3].x +
+                         m.cols[3].z * m.cols[0].w * m.cols[2].x +
+                         m.cols[2].z * m.cols[3].w * m.cols[0].x -
+                         m.cols[0].z * m.cols[3].w * m.cols[2].x -
+                         m.cols[2].z * m.cols[0].w * m.cols[3].x -
+                         m.cols[3].z * m.cols[2].w * m.cols[0].x,
+                     m.cols[0].z * m.cols[3].w * m.cols[1].x +
+                         m.cols[1].z * m.cols[0].w * m.cols[3].x +
+                         m.cols[3].z * m.cols[1].w * m.cols[0].x -
+                         m.cols[0].z * m.cols[1].w * m.cols[3].x -
+                         m.cols[3].z * m.cols[0].w * m.cols[1].x -
+                         m.cols[1].z * m.cols[3].w * m.cols[0].x,
+                     m.cols[0].z * m.cols[1].w * m.cols[2].x +
+                         m.cols[2].z * m.cols[0].w * m.cols[1].x +
+                         m.cols[1].z * m.cols[2].w * m.cols[0].x -
+                         m.cols[0].z * m.cols[2].w * m.cols[1].x -
+                         m.cols[1].z * m.cols[0].w * m.cols[2].x -
+                         m.cols[2].z * m.cols[1].w * m.cols[0].x},
+                    {m.cols[1].w * m.cols[2].x * m.cols[3].y +
+                         m.cols[3].w * m.cols[1].x * m.cols[2].y +
+                         m.cols[2].w * m.cols[3].x * m.cols[1].y -
+                         m.cols[1].w * m.cols[3].x * m.cols[2].y -
+                         m.cols[2].w * m.cols[1].x * m.cols[3].y -
+                         m.cols[3].w * m.cols[2].x * m.cols[1].y,
+                     m.cols[0].w * m.cols[3].x * m.cols[2].y +
+                         m.cols[2].w * m.cols[0].x * m.cols[3].y +
+                         m.cols[3].w * m.cols[2].x * m.cols[0].y -
+                         m.cols[0].w * m.cols[2].x * m.cols[3].y -
+                         m.cols[3].w * m.cols[0].x * m.cols[2].y -
+                         m.cols[2].w * m.cols[3].x * m.cols[0].y,
+                     m.cols[0].w * m.cols[1].x * m.cols[3].y +
+                         m.cols[3].w * m.cols[0].x * m.cols[1].y +
+                         m.cols[1].w * m.cols[3].x * m.cols[0].y -
+                         m.cols[0].w * m.cols[3].x * m.cols[1].y -
+                         m.cols[1].w * m.cols[0].x * m.cols[3].y -
+                         m.cols[3].w * m.cols[1].x * m.cols[0].y,
+                     m.cols[0].w * m.cols[2].x * m.cols[1].y +
+                         m.cols[1].w * m.cols[0].x * m.cols[2].y +
+                         m.cols[2].w * m.cols[1].x * m.cols[0].y -
+                         m.cols[0].w * m.cols[1].x * m.cols[2].y -
+                         m.cols[2].w * m.cols[0].x * m.cols[1].y -
+                         m.cols[1].w * m.cols[2].x * m.cols[0].y},
+                    {m.cols[1].x * m.cols[3].y * m.cols[2].z +
+                         m.cols[2].x * m.cols[1].y * m.cols[3].z +
+                         m.cols[3].x * m.cols[2].y * m.cols[1].z -
+                         m.cols[1].x * m.cols[2].y * m.cols[3].z -
+                         m.cols[3].x * m.cols[1].y * m.cols[2].z -
+                         m.cols[2].x * m.cols[3].y * m.cols[1].z,
+                     m.cols[0].x * m.cols[2].y * m.cols[3].z +
+                         m.cols[3].x * m.cols[0].y * m.cols[2].z +
+                         m.cols[2].x * m.cols[3].y * m.cols[0].z -
+                         m.cols[0].x * m.cols[3].y * m.cols[2].z -
+                         m.cols[2].x * m.cols[0].y * m.cols[3].z -
+                         m.cols[3].x * m.cols[2].y * m.cols[0].z,
+                     m.cols[0].x * m.cols[3].y * m.cols[1].z +
+                         m.cols[1].x * m.cols[0].y * m.cols[3].z +
+                         m.cols[3].x * m.cols[1].y * m.cols[0].z -
+                         m.cols[0].x * m.cols[1].y * m.cols[3].z -
+                         m.cols[3].x * m.cols[0].y * m.cols[1].z -
+                         m.cols[1].x * m.cols[3].y * m.cols[0].z,
+                     m.cols[0].x * m.cols[1].y * m.cols[2].z +
+                         m.cols[2].x * m.cols[0].y * m.cols[1].z +
+                         m.cols[1].x * m.cols[2].y * m.cols[0].z -
+                         m.cols[0].x * m.cols[2].y * m.cols[1].z -
+                         m.cols[1].x * m.cols[0].y * m.cols[2].z -
+                         m.cols[2].x * m.cols[1].y * m.cols[0].z}}};
+  return adjugate;
+}
+
+float mat4Determinant(Mat4 m) {
+  float det = m.cols[0].x * (m.cols[1].y * m.cols[2].z * m.cols[3].w +
+                             m.cols[3].y * m.cols[1].z * m.cols[2].w +
+                             m.cols[2].y * m.cols[3].z * m.cols[1].w -
+                             m.cols[1].y * m.cols[3].z * m.cols[2].w -
+                             m.cols[2].y * m.cols[1].z * m.cols[3].w -
+                             m.cols[3].y * m.cols[2].z * m.cols[1].w) +
+              m.cols[0].y * (m.cols[1].z * m.cols[3].w * m.cols[2].x +
+                             m.cols[2].z * m.cols[1].w * m.cols[3].x +
+                             m.cols[3].z * m.cols[2].w * m.cols[1].x -
+                             m.cols[1].z * m.cols[2].w * m.cols[3].x -
+                             m.cols[3].z * m.cols[1].w * m.cols[2].x -
+                             m.cols[2].z * m.cols[3].w * m.cols[1].x) +
+              m.cols[0].z * (m.cols[1].w * m.cols[2].x * m.cols[3].y +
+                             m.cols[3].w * m.cols[1].x * m.cols[2].y +
+                             m.cols[2].w * m.cols[3].x * m.cols[1].y -
+                             m.cols[1].w * m.cols[3].x * m.cols[2].y -
+                             m.cols[2].w * m.cols[1].x * m.cols[3].y -
+                             m.cols[3].w * m.cols[2].x * m.cols[1].y) +
+              m.cols[0].w * (m.cols[1].x * m.cols[3].y * m.cols[2].z +
+                             m.cols[2].x * m.cols[1].y * m.cols[3].z +
+                             m.cols[3].x * m.cols[2].y * m.cols[1].z -
+                             m.cols[1].x * m.cols[2].y * m.cols[3].z -
+                             m.cols[3].x * m.cols[1].y * m.cols[2].z -
+                             m.cols[2].x * m.cols[3].y * m.cols[1].z);
+  return det;
+}
+
+Mat4 mat4Inverse(Mat4 m) {
+  Mat4 adjugate = mat4Adjugate(m);
+  float det = mat4Determinant(m);
+  Mat4 inv = {{
+      adjugate.cols[0] / det,
+      adjugate.cols[1] / det,
+      adjugate.cols[2] / det,
+      adjugate.cols[3] / det,
+  }};
+
+  return inv;
+}
+
+Mat4 mat4Transpose(Mat4 m) {
+  Mat4 transposed = {{
+      mat4Row(m, 0),
+      mat4Row(m, 1),
+      mat4Row(m, 2),
+      mat4Row(m, 3),
+  }};
+
+  return transposed;
+}
+
 Mat4 mat4Identity() {
   Mat4 identity = {{
       {1, 0, 0, 0},

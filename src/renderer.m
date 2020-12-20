@@ -12,6 +12,7 @@ typedef struct _Vertex {
   Float3 position;
   Float4 color;
   Float2 texcoord;
+  Float3 normal;
 } Vertex;
 
 typedef uint32_t VertexIndex;
@@ -23,6 +24,11 @@ typedef struct _UniformBlock {
   Mat4 viewMat;
   Mat4 projMat;
 } UniformBlock;
+
+typedef struct _UniformsPerDraw {
+  Mat4 modelMat;
+  Mat4 normalMat;
+} UniformsPerDraw;
 
 typedef struct _SubMesh {
   int numVertices;
@@ -123,7 +129,16 @@ static void initSubMeshFromGLTFPrimitive(SubMesh *subMesh,
         cgltf_bool readResult = cgltf_accessor_read_float(
             attrib->data, vertexIndex,
             (float *)&subMesh->vertices[vertexIndex].color, numComponents);
-        subMesh->vertices[vertexIndex].color.w = 1;
+        ASSERT(readResult);
+      }
+      break;
+    case cgltf_attribute_type_normal:
+      for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
+           ++vertexIndex) {
+        cgltf_size numComponents = cgltf_num_components(attrib->data->type);
+        cgltf_bool readResult = cgltf_accessor_read_float(
+            attrib->data, vertexIndex,
+            (float *)&subMesh->vertices[vertexIndex].normal, numComponents);
         ASSERT(readResult);
       }
       break;
@@ -295,11 +310,12 @@ void renderMesh(const Model *model, const Mesh *mesh,
 
 void renderSceneNode(const Model *model, const SceneNode *node,
                      id<MTLRenderCommandEncoder> renderEncoder) {
-
-  Mat4 transform =
+  UniformsPerDraw uniform;
+  uniform.modelMat =
       mat4Multiply(gRenderer.globalTransform, node->worldTransform.matrix);
+  uniform.normalMat = mat4Transpose(mat4Inverse(uniform.modelMat));
 
-  [renderEncoder setVertexBytes:&transform length:sizeof(Mat4) atIndex:2];
+  [renderEncoder setVertexBytes:&uniform length:sizeof(uniform) atIndex:2];
 
   if (node->mesh >= 0) {
     Mesh *mesh = &model->meshes[node->mesh];
@@ -369,7 +385,8 @@ void initRenderer(MTKView *view) {
   gRenderer.depthStencilState =
       [gRenderer.device newDepthStencilStateWithDescriptor:depthStencilDesc];
 
-  NSString *gltfBasePath = [mainBundle pathForResource:@"Sponza" ofType:nil];
+  NSString *gltfBasePath = [mainBundle pathForResource:@"AnimatedCube"
+                                                ofType:nil];
   loadGLTFModel(&gRenderer.model, gltfBasePath);
   initVertexAndIndexBufferWithSubMesh(&gRenderer.vertexBuffer,
                                       &gRenderer.indexBuffer,
