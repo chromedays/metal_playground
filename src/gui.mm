@@ -3,7 +3,7 @@
 #include "external/imgui/imgui_impl_osx.h"
 #include "external/imgui/imgui_impl_metal.h"
 
-GUI gGUI = {.scale = {1, 1, 1}, .axis = {0, 1, 0}, .wireframe = true};
+GUI gGUI;
 
 extern "C" {
 
@@ -35,10 +35,6 @@ void guiEndFrameAndRender(id<MTLCommandBuffer> commandBufer,
 
 void doGUI() {
   ImGui::Begin("Control Panel");
-  ImGui::SliderFloat3("Position", (float *)&gGUI.pos, -10, 10);
-  ImGui::SliderFloat3("Scale", (float *)&gGUI.scale, 1, 30);
-  ImGui::SliderFloat3("Axis", (float *)&gGUI.axis, -1, 1);
-  ImGui::SliderAngle("Angle", &gGUI.angle);
   ImGui::Checkbox("Render wireframe", &gGUI.wireframe);
   ImGui::End();
 }

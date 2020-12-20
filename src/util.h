@@ -18,7 +18,11 @@
 #endif
 
 #ifdef DEBUG
-#define LOG(format, ...) printf(format "\n", __VA_ARGS__)
+#define LOG(...)                                                               \
+  do {                                                                         \
+    printf(__VA_ARGS__);                                                       \
+    printf("\n");                                                              \
+  } while (0)
 #else
-#define LOG(format, ...)
+#define LOG(...)
 #endif

@@ -20,10 +20,10 @@ typedef uint32_t VertexIndex;
 #define METAL_CONSTANT_ALIGNMENT 256
 #define NUM_BUFFERS_IN_FLIGHT 3
 
-typedef struct _UniformBlock {
+typedef struct _UniformsPerView {
   Mat4 viewMat;
   Mat4 projMat;
-} UniformBlock;
+} UniformsPerView;
 
 typedef struct _UniformsPerDraw {
   Mat4 modelMat;
@@ -148,6 +148,19 @@ static void initSubMeshFromGLTFPrimitive(SubMesh *subMesh,
   }
 }
 
+typedef struct _Camera {
+  float distance;
+  float theta;
+  float phi;
+} Camera;
+
+Mat4 getCameraMatrix(const Camera *cam) {
+  Float3 camPos = sphericalToCartesian(cam->distance, degToRad(cam->theta),
+                                       degToRad(cam->phi));
+  Mat4 lookAt = mat4LookAt(camPos, (Float3){0}, (Float3){0, 1, 0});
+  return lookAt;
+}
+
 static struct {
   id<MTLDevice> device;
   id<MTLCommandQueue> queue;
@@ -160,13 +173,15 @@ static struct {
 
   Model model;
 
-  id<MTLBuffer> vertexBuffer;
-  id<MTLBuffer> indexBuffer;
+  Camera cam;
 
-  UniformBlock uniformBlock;
-
-  Mat4 globalTransform;
+  UniformsPerView uniformsPerView;
 } gRenderer;
+
+static struct {
+  Float2 mouseDelta;
+  float wheelDelta;
+} gInput;
 
 void loadGLTFModel(Model *model, NSString *basePath) {
   LOG("Loading gltf (%s)", [basePath UTF8String]);
@@ -331,8 +346,7 @@ void renderMesh(const Model *model, const Mesh *mesh,
 void renderSceneNode(const Model *model, const SceneNode *node,
                      id<MTLRenderCommandEncoder> renderEncoder) {
   UniformsPerDraw uniform;
-  uniform.modelMat =
-      mat4Multiply(gRenderer.globalTransform, node->worldTransform.matrix);
+  uniform.modelMat = node->worldTransform.matrix;
   uniform.normalMat = mat4Transpose(mat4Inverse(uniform.modelMat));
 
   [renderEncoder setVertexBytes:&uniform length:sizeof(uniform) atIndex:2];
@@ -361,19 +375,6 @@ void renderModel(const Model *model,
       renderSceneNode(model, node, renderEncoder);
     }
   }
-}
-
-void initVertexAndIndexBufferWithSubMesh(__strong id<MTLBuffer> *vertexBuffer,
-                                         __strong id<MTLBuffer> *indexBuffer,
-                                         const SubMesh *subMesh) {
-  *vertexBuffer = [gRenderer.device
-      newBufferWithBytes:subMesh->vertices
-                  length:sizeof(Vertex) * subMesh->numVertices
-                 options:MTLResourceOptionCPUCacheModeDefault];
-  *indexBuffer = [gRenderer.device
-      newBufferWithBytes:subMesh->indices
-                  length:sizeof(VertexIndex) * subMesh->numIndices
-                 options:MTLResourceOptionCPUCacheModeDefault];
 }
 
 void initRenderer(MTKView *view) {
@@ -405,24 +406,37 @@ void initRenderer(MTKView *view) {
   gRenderer.depthStencilState =
       [gRenderer.device newDepthStencilStateWithDescriptor:depthStencilDesc];
 
-  NSString *gltfBasePath = [mainBundle pathForResource:@"AnimatedCube"
+  NSString *gltfBasePath = [mainBundle pathForResource:@"DamagedHelmet"
                                                 ofType:nil];
   loadGLTFModel(&gRenderer.model, gltfBasePath);
-  initVertexAndIndexBufferWithSubMesh(&gRenderer.vertexBuffer,
-                                      &gRenderer.indexBuffer,
-                                      &gRenderer.model.meshes[0].subMeshes[0]);
+
+  gRenderer.cam.distance = 5;
+  gRenderer.cam.phi = -90;
+  gRenderer.cam.theta = 0;
 
   initGUI(gRenderer.device);
 }
 
 void render(MTKView *view, float dt) {
+  gRenderer.cam.phi -= gInput.mouseDelta.x * 2.f;
+  gRenderer.cam.theta -= gInput.mouseDelta.y * 2.f;
+  if (gRenderer.cam.theta > 89.9f) {
+    gRenderer.cam.theta = 89.9f;
+  } else if (gRenderer.cam.theta < -89.9f) {
+    gRenderer.cam.theta = -89.9f;
+  }
+  gRenderer.cam.distance -= gInput.wheelDelta;
+  if (gRenderer.cam.distance < 0.1f) {
+    gRenderer.cam.distance = 0.1f;
+  }
+
   guiBeginFrame(view);
   doGUI();
 
-  gRenderer.uniformBlock.viewMat = mat4Translate((Float3){0, 0, -5});
+  gRenderer.uniformsPerView.viewMat = getCameraMatrix(&gRenderer.cam);
   Mat4 projection =
       mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 0.1f, 1000.f);
-  gRenderer.uniformBlock.projMat = projection;
+  gRenderer.uniformsPerView.projMat = projection;
 
   id<MTLCommandBuffer> commandBuffer = [gRenderer.queue commandBuffer];
   MTLRenderPassDescriptor *renderPassDescriptor =
@@ -443,12 +457,8 @@ void render(MTKView *view, float dt) {
     [renderEncoder setTriangleFillMode:MTLTriangleFillModeFill];
   }
 
-  gRenderer.globalTransform = mat4Multiply(
-      mat4Multiply(mat4Translate(gGUI.pos),
-                   quatToMat4(quatRotateAroundAxis(gGUI.axis, gGUI.angle))),
-      mat4Scale(gGUI.scale));
-  [renderEncoder setVertexBytes:&gRenderer.uniformBlock
-                         length:sizeof(gRenderer.uniformBlock)
+  [renderEncoder setVertexBytes:&gRenderer.uniformsPerView
+                         length:sizeof(gRenderer.uniformsPerView)
                         atIndex:1];
   renderModel(&gRenderer.model, renderEncoder);
 
@@ -458,6 +468,9 @@ void render(MTKView *view, float dt) {
   [renderEncoder endEncoding];
   [commandBuffer presentDrawable:view.currentDrawable];
   [commandBuffer commit];
+
+  gInput.mouseDelta = (Float2){0};
+  gInput.wheelDelta = 0;
 }
 
 void onResizeWindow() {
@@ -470,3 +483,9 @@ void onResizeWindow() {
   // textureDesc.usage |= MTLTextureUsageRenderTarget;
   // textureDesc.storageMode = MTLStorageModeMemoryless;
 }
+
+void onMouseDragged(float dx, float dy) {
+  gInput.mouseDelta = (Float2){dx, dy};
+}
+
+void onMouseScrolled(float dy) { gInput.wheelDelta = dy; }

@@ -7,10 +7,6 @@
 C_INTERFACE_BEGIN
 
 typedef struct _GUI {
-  Float3 pos;
-  Float3 scale;
-  Float3 axis;
-  float angle;
   bool wireframe;
 } GUI;
 

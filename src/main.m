@@ -85,10 +85,24 @@ float gScreenHeight = 720;
 
 - (void)mouseDragged:(NSEvent *)event {
   guiHandleOSXEvent(event, mtkView);
+
+  // NSPoint mousePos = [mtkView convertPoint:event.locationInWindow
+  // fromView:nil]; mousePos = NSMakePoint(mousePos.x,
+  // mtkView.bounds.size.height - mousePos.y); onMouseDragged(mousePos.x,
+  // mousePos.y);
+
+  onMouseDragged([event deltaX], -[event deltaY]);
 }
 
 - (void)scrollWheel:(NSEvent *)event {
   guiHandleOSXEvent(event, mtkView);
+
+  double dy = [event scrollingDeltaY] * 0.1;
+  if ([event hasPreciseScrollingDeltas]) {
+    dy *= 0.1;
+  }
+
+  onMouseScrolled((float)dy);
 }
 
 - (void)setRepresentedObject:(id)representedObject {

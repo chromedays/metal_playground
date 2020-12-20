@@ -20,6 +20,7 @@ Float3 float3Cross(const Float3 a, const Float3 b);
 float float3LengthSq(const Float3 v);
 float float3Length(const Float3 v);
 Float3 float3Normalize(const Float3 v);
+Float3 sphericalToCartesian(float r, float theta, float phi);
 
 float float4Dot(const Float4 a, const Float4 b);
 

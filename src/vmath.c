@@ -50,6 +50,18 @@ Float3 float3Normalize(const Float3 v) {
   return normalized;
 }
 
+Float3 sphericalToCartesian(float r, float theta, float phi) {
+  float cosTheta = cosf(theta);
+
+  Float3 cartesian = {
+      r * cosTheta * cosf(phi),
+      r * sinf(theta),
+      r * cosTheta * -sinf(phi),
+  };
+
+  return cartesian;
+}
+
 float float4Dot(const Float4 a, const Float4 b) {
   float result = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
   return result;
