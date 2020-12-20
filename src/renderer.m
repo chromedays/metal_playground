@@ -9,7 +9,7 @@
 #import <MetalKit/MetalKit.h>
 
 typedef struct _Vertex {
-  Float4 position;
+  Float3 position;
   Float4 color;
   Float2 texcoord;
 } Vertex;
@@ -103,7 +103,6 @@ static void initSubMeshFromGLTFPrimitive(SubMesh *subMesh,
         cgltf_bool readResult = cgltf_accessor_read_float(
             attrib->data, vertexIndex,
             (float *)&subMesh->vertices[vertexIndex].position, numComponents);
-        subMesh->vertices[vertexIndex].position.w = 1;
         ASSERT(readResult);
       }
       break;

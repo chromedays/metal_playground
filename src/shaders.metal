@@ -2,7 +2,7 @@
 using namespace metal;
 
 struct Vertex {
-  float4 position [[position]];
+  float3 position;
   float4 color;
   float2 texcoord;
 };
@@ -29,7 +29,7 @@ vertex VertexOut vertex_main(const device Vertex *vertices [[buffer(0)]],
                              uint vid [[vertex_id]]) {
   VertexOut vertexOut;
   vertexOut.position =
-      uniforms->projMat * uniforms->viewMat * uniformsPerDraw->modelMat * vertices[vid].position;
+      uniforms->projMat * uniforms->viewMat * uniformsPerDraw->modelMat * float4(vertices[vid].position, 1);
   vertexOut.color = vertices[vid].color;
   vertexOut.pointSize = 10;
   return vertexOut;
