@@ -142,6 +142,8 @@ static struct {
   id<MTLRenderPipelineState> pipeline;
   id<MTLDepthStencilState> depthStencilState;
 
+  id<MTLSamplerState> defaultSampler;
+
   Model model;
 
   OrbitCamera cam;
@@ -295,9 +297,14 @@ void loadGLTFModel(Model *model, NSString *basePath) {
     material->baseColorTexture =
         gltfMaterial->pbr_metallic_roughness.base_color_texture.texture->image -
         gltf->images;
-    material->baseColorSampler = gltfMaterial->pbr_metallic_roughness
-                                     .base_color_texture.texture->sampler -
-                                 gltf->samplers;
+    if (gltfMaterial->pbr_metallic_roughness.base_color_texture.texture
+            ->sampler) {
+      material->baseColorSampler = gltfMaterial->pbr_metallic_roughness
+                                       .base_color_texture.texture->sampler -
+                                   gltf->samplers;
+    } else {
+      material->baseColorSampler = -1;
+    }
   }
 
   model->numMeshes = gltf->meshes_count;
@@ -523,9 +530,15 @@ void renderMesh(const Model *model, const Mesh *mesh,
     [renderEncoder
         setFragmentTexture:model->textures[material->baseColorTexture]
                    atIndex:0];
-    [renderEncoder
-        setFragmentSamplerState:model->samplers[material->baseColorSampler]
-                        atIndex:0];
+
+    if (material->baseColorSampler >= 0) {
+      [renderEncoder
+          setFragmentSamplerState:model->samplers[material->baseColorSampler]
+                          atIndex:0];
+    } else {
+      [renderEncoder setFragmentSamplerState:gRenderer.defaultSampler
+                                     atIndex:0];
+    }
 
     [renderEncoder setVertexBufferOffset:subMesh->gpuVertexBufferOffsetInBytes
                                  atIndex:0];
@@ -601,8 +614,18 @@ void initRenderer(MTKView *view) {
   gRenderer.depthStencilState =
       [gRenderer.device newDepthStencilStateWithDescriptor:depthStencilDesc];
 
-  NSString *gltfBasePath = [mainBundle pathForResource:@"DamagedHelmet"
-                                                ofType:nil];
+  MTLSamplerDescriptor *defaultSamplerDesc =
+      [[MTLSamplerDescriptor alloc] init];
+  defaultSamplerDesc.magFilter = MTLSamplerMinMagFilterLinear;
+  defaultSamplerDesc.minFilter = MTLSamplerMinMagFilterNearest;
+  defaultSamplerDesc.mipFilter = MTLSamplerMipFilterLinear;
+  defaultSamplerDesc.sAddressMode = MTLSamplerAddressModeRepeat;
+  defaultSamplerDesc.tAddressMode = MTLSamplerAddressModeRepeat;
+  defaultSamplerDesc.rAddressMode = MTLSamplerAddressModeRepeat;
+  gRenderer.defaultSampler =
+      [gRenderer.device newSamplerStateWithDescriptor:defaultSamplerDesc];
+
+  NSString *gltfBasePath = [mainBundle pathForResource:@"Avocado" ofType:nil];
   loadGLTFModel(&gRenderer.model, gltfBasePath);
 
   gRenderer.cam.distance = 5;
@@ -615,6 +638,7 @@ void initRenderer(MTKView *view) {
 void destroyRenderer() {
   destroyGUI();
   destroyModel(&gRenderer.model);
+  gRenderer.defaultSampler = nil;
   gRenderer.depthStencilState = nil;
   gRenderer.pipeline = nil;
   gRenderer.library = nil;
@@ -639,8 +663,8 @@ void render(MTKView *view, float dt) {
   doGUI();
 
   gRenderer.uniformsPerView.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
-  Mat4 projection =
-      mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight, 0.1f, 1000.f);
+  Mat4 projection = mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight,
+                                    0.01f, 1000.f);
   gRenderer.uniformsPerView.projMat = projection;
 
   id<MTLCommandBuffer> commandBuffer = [gRenderer.queue commandBuffer];
