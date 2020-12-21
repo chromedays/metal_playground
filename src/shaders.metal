@@ -58,5 +58,5 @@ fragment half4 fragment_main(VertexOut inVertex [[stage_in]],
   // return half4(1, 1, 1, 1);
 
   // return half4(half3(inVertex.normal), 1);
-  return half4(baseColorTexture.sample(baseColorSampler, inVertex.texcoord));
+  return half4(baseColorTexture.sample(baseColorSampler, inVertex.texcoord)) * half4(inVertex.color);
 }

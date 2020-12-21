@@ -1,3 +1,4 @@
+#include "util.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -23,6 +24,7 @@ void *allocate(int size, int alignment) {
   }
   size = alignUp(size, alignment);
   void *mem = aligned_alloc(alignment, size);
+
   return mem;
 }
 
@@ -33,6 +35,7 @@ void *allocateZeroes(int size, int alignment) {
   size = alignUp(size, alignment);
   void *mem = aligned_alloc(alignment, size);
   memset(mem, 0, size);
+
   return mem;
 }
 

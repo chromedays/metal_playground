@@ -1,6 +1,7 @@
 #pragma once
 #ifdef DEBUG
 #include <assert.h>
+#include <stdio.h>
 #endif
 
 #ifdef __cplusplus

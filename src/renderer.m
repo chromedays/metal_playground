@@ -142,6 +142,7 @@ static struct {
   id<MTLRenderPipelineState> pipeline;
   id<MTLDepthStencilState> depthStencilState;
 
+  id<MTLTexture> defaultBaseColorTexture;
   id<MTLSamplerState> defaultSampler;
 
   Model model;
@@ -164,6 +165,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
       [basePath stringByAppendingPathComponent:
                     [[basePath lastPathComponent]
                         stringByAppendingPathExtension:@"gltf"]];
+
   cgltf_data *gltf;
   cgltf_result gltfLoadResult =
       cgltf_parse_file(&options, [filePath UTF8String], &gltf);
@@ -291,18 +293,25 @@ void loadGLTFModel(Model *model, NSString *basePath) {
     Material *material = &model->materials[materialIndex];
     ASSERT(gltfMaterial->has_pbr_metallic_roughness);
 
-    memcpy(&material->baseColorFactor,
-           gltfMaterial->pbr_metallic_roughness.base_color_factor,
+    cgltf_pbr_metallic_roughness *pbrMR = &gltfMaterial->pbr_metallic_roughness;
+
+    memcpy(&material->baseColorFactor, pbrMR->base_color_factor,
            sizeof(Float4));
-    material->baseColorTexture =
-        gltfMaterial->pbr_metallic_roughness.base_color_texture.texture->image -
-        gltf->images;
-    if (gltfMaterial->pbr_metallic_roughness.base_color_texture.texture
-            ->sampler) {
-      material->baseColorSampler = gltfMaterial->pbr_metallic_roughness
-                                       .base_color_texture.texture->sampler -
-                                   gltf->samplers;
+
+    if (pbrMR->base_color_texture.texture) {
+      material->baseColorTexture = gltfMaterial->pbr_metallic_roughness
+                                       .base_color_texture.texture->image -
+                                   gltf->images;
+
+      if (pbrMR->base_color_texture.texture->sampler) {
+        material->baseColorSampler = gltfMaterial->pbr_metallic_roughness
+                                         .base_color_texture.texture->sampler -
+                                     gltf->samplers;
+      } else {
+        material->baseColorSampler = -1;
+      }
     } else {
+      material->baseColorTexture = -1;
       material->baseColorSampler = -1;
     }
   }
@@ -337,6 +346,9 @@ void loadGLTFModel(Model *model, NSString *basePath) {
 
       subMesh->numVertices = maxIndex + 1;
       subMesh->vertices = MALLOC_ARRAY_ZEROES(Vertex, subMesh->numVertices);
+      for (int i = 0; i < subMesh->numVertices; ++i) {
+        subMesh->vertices[i].color = (Float4){1, 1, 1, 1};
+      }
       for (cgltf_size attribIndex = 0; attribIndex < prim->attributes_count;
            ++attribIndex) {
         cgltf_attribute *attrib = &prim->attributes[attribIndex];
@@ -527,9 +539,15 @@ void renderMesh(const Model *model, const Mesh *mesh,
     UniformsPerMaterial uniforms = {.baseColorFactor =
                                         material->baseColorFactor};
     [renderEncoder setVertexBytes:&uniforms length:sizeof(uniforms) atIndex:2];
-    [renderEncoder
-        setFragmentTexture:model->textures[material->baseColorTexture]
-                   atIndex:0];
+
+    if (material->baseColorTexture >= 0) {
+      [renderEncoder
+          setFragmentTexture:model->textures[material->baseColorTexture]
+                     atIndex:0];
+    } else {
+      [renderEncoder setFragmentTexture:gRenderer.defaultBaseColorTexture
+                                atIndex:0];
+    }
 
     if (material->baseColorSampler >= 0) {
       [renderEncoder
@@ -585,6 +603,16 @@ void renderModel(const Model *model,
   }
 }
 
+static void loadModel() {
+  NSBundle *mainBundle = [NSBundle mainBundle];
+  NSString *gltfBasePath = [mainBundle
+      pathForResource:[NSString
+                          stringWithCString:gGUI.models[gGUI.selectedModel]
+                                   encoding:NSUTF8StringEncoding]
+               ofType:nil];
+  loadGLTFModel(&gRenderer.model, gltfBasePath);
+}
+
 void initRenderer(MTKView *view) {
   gRenderer.device = MTLCreateSystemDefaultDevice();
   view.device = gRenderer.device;
@@ -614,6 +642,23 @@ void initRenderer(MTKView *view) {
   gRenderer.depthStencilState =
       [gRenderer.device newDepthStencilStateWithDescriptor:depthStencilDesc];
 
+  MTLTextureDescriptor *defaultBaseColorTextureDesc = [MTLTextureDescriptor
+      texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                   width:1
+                                  height:1
+                               mipmapped:NO];
+  gRenderer.defaultBaseColorTexture =
+      [gRenderer.device newTextureWithDescriptor:defaultBaseColorTextureDesc];
+  MTLRegion region = {
+      .origin = {0, 0, 0},
+      .size = {1, 1, 1},
+  };
+  uint32_t color = 0xffffffff;
+  [gRenderer.defaultBaseColorTexture replaceRegion:region
+                                       mipmapLevel:0
+                                         withBytes:&color
+                                       bytesPerRow:4];
+
   MTLSamplerDescriptor *defaultSamplerDesc =
       [[MTLSamplerDescriptor alloc] init];
   defaultSamplerDesc.magFilter = MTLSamplerMinMagFilterLinear;
@@ -625,8 +670,7 @@ void initRenderer(MTKView *view) {
   gRenderer.defaultSampler =
       [gRenderer.device newSamplerStateWithDescriptor:defaultSamplerDesc];
 
-  NSString *gltfBasePath = [mainBundle pathForResource:@"Avocado" ofType:nil];
-  loadGLTFModel(&gRenderer.model, gltfBasePath);
+  loadModel();
 
   gRenderer.cam.distance = 5;
   gRenderer.cam.phi = -90;
@@ -660,7 +704,13 @@ void render(MTKView *view, float dt) {
   }
 
   guiBeginFrame(view);
-  doGUI();
+  bool shouldLoadNewModel;
+  doGUI(&shouldLoadNewModel);
+
+  if (shouldLoadNewModel) {
+    destroyModel(&gRenderer.model);
+    loadModel();
+  }
 
   gRenderer.uniformsPerView.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
   Mat4 projection = mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight,

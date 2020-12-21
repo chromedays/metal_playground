@@ -3,7 +3,17 @@
 #include "external/imgui/imgui_impl_osx.h"
 #include "external/imgui/imgui_impl_metal.h"
 
-GUI gGUI;
+GUI gGUI = {.models = {
+                "AnimatedCube",
+                "Avocado",
+                "BoxVertexColors",
+                "CesiumMilkTruck",
+                "DamagedHelmet",
+                "EnvironmentTest",
+                "Sponza",
+                "VC",
+                "MetalRoughSpheres",
+            }};
 
 extern "C" {
 
@@ -12,6 +22,10 @@ void initGUI(id<MTLDevice> device) {
   ImGui::StyleColorsDark();
   ImGui_ImplMetal_Init(device);
   ImGui_ImplOSX_Init();
+
+  while (gGUI.models[gGUI.numModels]) {
+    ++gGUI.numModels;
+  }
 }
 
 void destroyGUI() {
@@ -39,9 +53,14 @@ void guiEndFrameAndRender(id<MTLCommandBuffer> commandBufer,
   [renderEncoder popDebugGroup];
 }
 
-void doGUI() {
+void doGUI(bool *shouldLoadNewModel) {
   ImGui::Begin("Control Panel");
   ImGui::Checkbox("Render wireframe", &gGUI.wireframe);
+  int newSelectedModel = gGUI.selectedModel;
+  ImGui::ListBox("Select model", &newSelectedModel, gGUI.models,
+                 gGUI.numModels);
+  *shouldLoadNewModel = newSelectedModel != gGUI.selectedModel;
+  gGUI.selectedModel = newSelectedModel;
   ImGui::End();
 }
 
