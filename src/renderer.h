@@ -5,6 +5,7 @@
 C_INTERFACE_BEGIN
 
 void initRenderer(MTKView *view);
+void destroyRenderer();
 void render(MTKView *view, float dt);
 void onResizeWindow();
 void onMouseDragged(float dx, float dy);

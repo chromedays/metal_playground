@@ -27,16 +27,41 @@ typedef struct _UniformsPerView {
   Mat4 projMat;
 } UniformsPerView;
 
+typedef struct _UniformsPerMaterial {
+  Float4 baseColorFactor;
+} UniformsPerMaterial;
+
 typedef struct _UniformsPerDraw {
   Mat4 modelMat;
   Mat4 normalMat;
 } UniformsPerDraw;
+
+typedef struct _Material {
+  int baseColorTexture;
+  int baseColorSampler;
+  Float4 baseColorFactor;
+  int metallicRoughnessTexture;
+  int metallicRoughnessSampler;
+  float metallicFactor;
+  float roughnessFactor;
+  int normalTexture;
+  int normalSampler;
+  float normalScale;
+  int occlusionTexture;
+  int occlusionSampler;
+  float occlusionStrength;
+  int emissiveTexture;
+  int emissiveSampler;
+  Float3 emissiveFactor;
+} Material;
 
 typedef struct _SubMesh {
   int numVertices;
   Vertex *vertices;
   int numIndices;
   VertexIndex *indices;
+
+  int material;
 
   int gpuVertexBufferOffsetInBytes;
   int gpuIndexBufferOffsetInBytes;
@@ -72,6 +97,15 @@ typedef struct _Scene {
 } Scene;
 
 typedef struct _Model {
+  int numTextures;
+  id<MTLTexture> __strong *textures;
+
+  int numSamplers;
+  id<MTLSamplerState> __strong *samplers;
+
+  int numMaterials;
+  Material *materials;
+
   int numMeshes;
   Mesh *meshes;
 
@@ -84,71 +118,6 @@ typedef struct _Model {
   id<MTLBuffer> gpuVertexBuffer;
   id<MTLBuffer> gpuIndexBuffer;
 } Model;
-
-static void initSubMeshFromGLTFPrimitive(SubMesh *subMesh,
-                                         const cgltf_primitive *prim) {
-  subMesh->numIndices = prim->indices->count;
-  subMesh->indices = MALLOC_ARRAY(VertexIndex, subMesh->numIndices);
-  VertexIndex maxIndex = 0;
-  for (cgltf_size i = 0; i < prim->indices->count; ++i) {
-    subMesh->indices[i] = cgltf_accessor_read_index(prim->indices, i);
-    if (maxIndex < subMesh->indices[i]) {
-      maxIndex = subMesh->indices[i];
-    }
-  }
-
-  subMesh->numVertices = maxIndex + 1;
-  subMesh->vertices = MALLOC_ARRAY_ZEROES(Vertex, subMesh->numVertices);
-  for (cgltf_size attribIndex = 0; attribIndex < prim->attributes_count;
-       ++attribIndex) {
-    cgltf_attribute *attrib = &prim->attributes[attribIndex];
-    ASSERT(!attrib->data->is_sparse); // Sparse is not supported yet;
-    switch (attrib->type) {
-    case cgltf_attribute_type_position:
-      for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
-           ++vertexIndex) {
-        cgltf_size numComponents = cgltf_num_components(attrib->data->type);
-        cgltf_bool readResult = cgltf_accessor_read_float(
-            attrib->data, vertexIndex,
-            (float *)&subMesh->vertices[vertexIndex].position, numComponents);
-        ASSERT(readResult);
-      }
-      break;
-    case cgltf_attribute_type_texcoord:
-      for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
-           ++vertexIndex) {
-        cgltf_size numComponents = cgltf_num_components(attrib->data->type);
-        cgltf_bool readResult = cgltf_accessor_read_float(
-            attrib->data, vertexIndex,
-            (float *)&subMesh->vertices[vertexIndex].texcoord, numComponents);
-        ASSERT(readResult);
-      }
-      break;
-    case cgltf_attribute_type_color:
-      for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
-           ++vertexIndex) {
-        cgltf_size numComponents = cgltf_num_components(attrib->data->type);
-        cgltf_bool readResult = cgltf_accessor_read_float(
-            attrib->data, vertexIndex,
-            (float *)&subMesh->vertices[vertexIndex].color, numComponents);
-        ASSERT(readResult);
-      }
-      break;
-    case cgltf_attribute_type_normal:
-      for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
-           ++vertexIndex) {
-        cgltf_size numComponents = cgltf_num_components(attrib->data->type);
-        cgltf_bool readResult = cgltf_accessor_read_float(
-            attrib->data, vertexIndex,
-            (float *)&subMesh->vertices[vertexIndex].normal, numComponents);
-        ASSERT(readResult);
-      }
-      break;
-    default:
-      break;
-    }
-  }
-}
 
 typedef struct _OrbitCamera {
   float distance;
@@ -199,6 +168,138 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   ASSERT(gltfLoadResult == cgltf_result_success);
   cgltf_load_buffers(&options, gltf, [filePath UTF8String]);
 
+  model->numTextures = gltf->textures_count;
+  model->textures = (id<MTLTexture> __strong *)MALLOC_ARRAY_ZEROES(
+      id<MTLTexture> __strong, model->numTextures);
+
+  id<MTLCommandBuffer> commandBuffer = [gRenderer.queue commandBuffer];
+  id<MTLBlitCommandEncoder> mipmapBlitEncoder =
+      [commandBuffer blitCommandEncoder];
+
+  for (cgltf_size textureIndex = 0; textureIndex < gltf->images_count;
+       ++textureIndex) {
+    cgltf_image *gltfImage = &gltf->images[textureIndex];
+    NSString *imageFilePath =
+        [basePath stringByAppendingPathComponent:
+                      [NSString stringWithCString:gltfImage->uri
+                                         encoding:NSUTF8StringEncoding]];
+    int w, h, numComponents;
+    stbi_uc *data = stbi_load([imageFilePath UTF8String], &w, &h,
+                              &numComponents, STBI_rgb_alpha);
+    MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor
+        texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                     width:w
+                                    height:h
+                                 mipmapped:YES];
+    model->textures[textureIndex] =
+        [gRenderer.device newTextureWithDescriptor:textureDesc];
+
+    MTLRegion region = {
+        .origin = {0, 0, 0},
+        .size = {w, h, 1},
+    };
+
+    [model->textures[textureIndex] replaceRegion:region
+                                     mipmapLevel:0
+                                       withBytes:data
+                                     bytesPerRow:4 * w];
+
+    stbi_image_free(data);
+
+    [mipmapBlitEncoder generateMipmapsForTexture:model->textures[textureIndex]];
+  }
+  [mipmapBlitEncoder endEncoding];
+  [commandBuffer commit];
+
+  model->numSamplers = gltf->samplers_count;
+  model->samplers = (id<MTLSamplerState> __strong *)MALLOC_ARRAY_ZEROES(
+      id<MTLSamplerState> __strong, model->numSamplers);
+
+  for (cgltf_size samplerIndex = 0; samplerIndex < gltf->samplers_count;
+       ++samplerIndex) {
+    cgltf_sampler *gltfSampler = &gltf->samplers[samplerIndex];
+    MTLSamplerDescriptor *samplerDesc = [[MTLSamplerDescriptor alloc] init];
+    switch (gltfSampler->mag_filter) {
+    case 9728:
+      samplerDesc.magFilter = MTLSamplerMinMagFilterNearest;
+      break;
+    default:
+      samplerDesc.magFilter = MTLSamplerMinMagFilterLinear;
+      break;
+    }
+
+    switch (gltfSampler->min_filter) {
+    case 9729:
+    case 9985:
+    case 9987:
+      samplerDesc.minFilter = MTLSamplerMinMagFilterLinear;
+      break;
+    default:
+      samplerDesc.minFilter = MTLSamplerMinMagFilterNearest;
+    }
+
+    switch (gltfSampler->min_filter) {
+    case 9728:
+    case 9729:
+      samplerDesc.mipFilter = MTLSamplerMipFilterNotMipmapped;
+      break;
+    case 9984:
+    case 9985:
+      samplerDesc.mipFilter = MTLSamplerMipFilterNearest;
+      break;
+    default:
+      samplerDesc.mipFilter = MTLSamplerMipFilterLinear;
+    }
+
+    switch (gltfSampler->wrap_s) {
+    case 33071:
+      samplerDesc.sAddressMode = MTLSamplerAddressModeClampToEdge;
+      break;
+    case 33648:
+      samplerDesc.sAddressMode = MTLSamplerAddressModeMirrorRepeat;
+      break;
+    default:
+      samplerDesc.sAddressMode = MTLSamplerAddressModeRepeat;
+      break;
+    }
+
+    switch (gltfSampler->wrap_t) {
+    case 33071:
+      samplerDesc.tAddressMode = MTLSamplerAddressModeClampToEdge;
+      break;
+    case 33648:
+      samplerDesc.tAddressMode = MTLSamplerAddressModeMirrorRepeat;
+      break;
+    default:
+      samplerDesc.tAddressMode = MTLSamplerAddressModeRepeat;
+      break;
+    }
+
+    samplerDesc.rAddressMode = MTLSamplerAddressModeRepeat;
+
+    model->samplers[samplerIndex] =
+        [gRenderer.device newSamplerStateWithDescriptor:samplerDesc];
+  }
+
+  model->numMaterials = gltf->materials_count;
+  model->materials = MALLOC_ARRAY_ZEROES(Material, model->numMaterials);
+  for (cgltf_size materialIndex = 0; materialIndex < gltf->materials_count;
+       ++materialIndex) {
+    cgltf_material *gltfMaterial = &gltf->materials[materialIndex];
+    Material *material = &model->materials[materialIndex];
+    ASSERT(gltfMaterial->has_pbr_metallic_roughness);
+
+    memcpy(&material->baseColorFactor,
+           gltfMaterial->pbr_metallic_roughness.base_color_factor,
+           sizeof(Float4));
+    material->baseColorTexture =
+        gltfMaterial->pbr_metallic_roughness.base_color_texture.texture->image -
+        gltf->images;
+    material->baseColorSampler = gltfMaterial->pbr_metallic_roughness
+                                     .base_color_texture.texture->sampler -
+                                 gltf->samplers;
+  }
+
   model->numMeshes = gltf->meshes_count;
   model->meshes = MALLOC_ARRAY_ZEROES(Mesh, model->numMeshes);
 
@@ -214,10 +315,76 @@ void loadGLTFModel(Model *model, NSString *basePath) {
 
     for (cgltf_size primIndex = 0; primIndex < gltfMesh->primitives_count;
          ++primIndex) {
+      cgltf_primitive *prim = &gltfMesh->primitives[primIndex];
       SubMesh *subMesh = &mesh->subMeshes[primIndex];
-      initSubMeshFromGLTFPrimitive(subMesh, &gltfMesh->primitives[primIndex]);
+
+      subMesh->numIndices = prim->indices->count;
+      subMesh->indices = MALLOC_ARRAY(VertexIndex, subMesh->numIndices);
+      VertexIndex maxIndex = 0;
+      for (cgltf_size i = 0; i < prim->indices->count; ++i) {
+        subMesh->indices[i] = cgltf_accessor_read_index(prim->indices, i);
+        if (maxIndex < subMesh->indices[i]) {
+          maxIndex = subMesh->indices[i];
+        }
+      }
+
+      subMesh->numVertices = maxIndex + 1;
+      subMesh->vertices = MALLOC_ARRAY_ZEROES(Vertex, subMesh->numVertices);
+      for (cgltf_size attribIndex = 0; attribIndex < prim->attributes_count;
+           ++attribIndex) {
+        cgltf_attribute *attrib = &prim->attributes[attribIndex];
+        ASSERT(!attrib->data->is_sparse); // Sparse is not supported yet;
+        switch (attrib->type) {
+        case cgltf_attribute_type_position:
+          for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
+               ++vertexIndex) {
+            cgltf_size numComponents = cgltf_num_components(attrib->data->type);
+            cgltf_bool readResult = cgltf_accessor_read_float(
+                attrib->data, vertexIndex,
+                (float *)&subMesh->vertices[vertexIndex].position,
+                numComponents);
+            ASSERT(readResult);
+          }
+          break;
+        case cgltf_attribute_type_texcoord:
+          for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
+               ++vertexIndex) {
+            cgltf_size numComponents = cgltf_num_components(attrib->data->type);
+            cgltf_bool readResult = cgltf_accessor_read_float(
+                attrib->data, vertexIndex,
+                (float *)&subMesh->vertices[vertexIndex].texcoord,
+                numComponents);
+            ASSERT(readResult);
+          }
+          break;
+        case cgltf_attribute_type_color:
+          for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
+               ++vertexIndex) {
+            cgltf_size numComponents = cgltf_num_components(attrib->data->type);
+            cgltf_bool readResult = cgltf_accessor_read_float(
+                attrib->data, vertexIndex,
+                (float *)&subMesh->vertices[vertexIndex].color, numComponents);
+            ASSERT(readResult);
+          }
+          break;
+        case cgltf_attribute_type_normal:
+          for (cgltf_size vertexIndex = 0; vertexIndex < attrib->data->count;
+               ++vertexIndex) {
+            cgltf_size numComponents = cgltf_num_components(attrib->data->type);
+            cgltf_bool readResult = cgltf_accessor_read_float(
+                attrib->data, vertexIndex,
+                (float *)&subMesh->vertices[vertexIndex].normal, numComponents);
+            ASSERT(readResult);
+          }
+          break;
+        default:
+          break;
+        }
+      }
       vertexBufferSize += subMesh->numVertices * sizeof(Vertex);
       indexBufferSize += subMesh->numIndices * sizeof(VertexIndex);
+
+      subMesh->material = prim->material - gltf->materials;
     }
   }
 
@@ -307,6 +474,9 @@ void loadGLTFModel(Model *model, NSString *basePath) {
 }
 
 void destroyModel(Model *model) {
+  model->gpuIndexBuffer = nil;
+  model->gpuVertexBuffer = nil;
+
   for (int i = 0; i < model->numScenes; ++i) {
     FREE(model->scenes[i].nodes);
   }
@@ -324,8 +494,19 @@ void destroyModel(Model *model) {
     }
     FREE(model->meshes[i].subMeshes);
   }
-
   FREE(model->meshes);
+
+  FREE(model->materials);
+
+  for (int i = 0; i < model->numSamplers; ++i) {
+    model->samplers[i] = nil;
+  }
+  FREE(model->samplers);
+
+  for (int i = 0; i < model->numTextures; ++i) {
+    model->textures[i] = nil;
+  }
+  FREE(model->textures);
 }
 
 void renderMesh(const Model *model, const Mesh *mesh,
@@ -333,6 +514,18 @@ void renderMesh(const Model *model, const Mesh *mesh,
   for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
        ++subMeshIndex) {
     SubMesh *subMesh = &mesh->subMeshes[subMeshIndex];
+
+    Material *material = &model->materials[subMesh->material];
+
+    UniformsPerMaterial uniforms = {.baseColorFactor =
+                                        material->baseColorFactor};
+    [renderEncoder setVertexBytes:&uniforms length:sizeof(uniforms) atIndex:2];
+    [renderEncoder
+        setFragmentTexture:model->textures[material->baseColorTexture]
+                   atIndex:0];
+    [renderEncoder
+        setFragmentSamplerState:model->samplers[material->baseColorSampler]
+                        atIndex:0];
 
     [renderEncoder setVertexBufferOffset:subMesh->gpuVertexBufferOffsetInBytes
                                  atIndex:0];
@@ -351,7 +544,7 @@ void renderSceneNode(const Model *model, const SceneNode *node,
   uniform.modelMat = node->worldTransform.matrix;
   uniform.normalMat = mat4Transpose(mat4Inverse(uniform.modelMat));
 
-  [renderEncoder setVertexBytes:&uniform length:sizeof(uniform) atIndex:2];
+  [renderEncoder setVertexBytes:&uniform length:sizeof(uniform) atIndex:3];
 
   if (node->mesh >= 0) {
     Mesh *mesh = &model->meshes[node->mesh];
@@ -417,6 +610,16 @@ void initRenderer(MTKView *view) {
   gRenderer.cam.theta = 0;
 
   initGUI(gRenderer.device);
+}
+
+void destroyRenderer() {
+  destroyGUI();
+  destroyModel(&gRenderer.model);
+  gRenderer.depthStencilState = nil;
+  gRenderer.pipeline = nil;
+  gRenderer.library = nil;
+  gRenderer.queue = nil;
+  gRenderer.device = nil;
 }
 
 void render(MTKView *view, float dt) {
@@ -487,7 +690,9 @@ void onResizeWindow() {
 }
 
 void onMouseDragged(float dx, float dy) {
-  gInput.mouseDelta = (Float2){dx, dy};
+  if (!isGUIHandlingMouseDrag()) {
+    gInput.mouseDelta = (Float2){dx, dy};
+  }
 }
 
 void onMouseScrolled(float dy) { gInput.wheelDelta = dy; }

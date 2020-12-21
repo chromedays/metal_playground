@@ -13,12 +13,14 @@ typedef struct _GUI {
 extern GUI gGUI;
 
 void initGUI(id<MTLDevice> device);
+void destroyGUI();
 BOOL guiHandleOSXEvent(NSEvent *event, MTKView *view);
 void guiBeginFrame(MTKView *view);
 void guiEndFrameAndRender(id<MTLCommandBuffer> commandBufer,
                           id<MTLRenderCommandEncoder> renderEncoder);
 
 void doGUI();
+bool isGUIHandlingMouseDrag();
 
 void guiDemo();
 

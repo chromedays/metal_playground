@@ -11,12 +11,17 @@ struct Vertex {
 struct VertexOut {
   float4 position [[position]];
   float4 color;
+  float2 texcoord;
   float3 normal;
 };
 
-struct UniformBlock {
+struct PerView {
   float4x4 viewMat;
   float4x4 projMat;
+};
+
+struct PerMaterial {
+  float4 baseColorFactor;
 };
 
 struct PerDraw {
@@ -25,14 +30,19 @@ struct PerDraw {
 };
 
 vertex VertexOut vertex_main(const device Vertex *vertices [[buffer(0)]],
-                             const constant UniformBlock *uniforms
+                             const constant PerView *uniformsPerView
                              [[buffer(1)]],
-                             const constant PerDraw* uniformsPerDraw [[buffer(2)]],
+                             const constant PerMaterial *uniformsPerMaterial
+                             [[buffer(2)]],
+                             const constant PerDraw *uniformsPerDraw
+                             [[buffer(3)]],
                              uint vid [[vertex_id]]) {
   VertexOut vertexOut;
-  vertexOut.position =
-      uniforms->projMat * uniforms->viewMat * uniformsPerDraw->modelMat * float4(vertices[vid].position, 1);
+  vertexOut.position = uniformsPerView->projMat * uniformsPerView->viewMat *
+                       uniformsPerDraw->modelMat *
+                       float4(vertices[vid].position, 1);
   vertexOut.color = vertices[vid].color;
+  vertexOut.texcoord = vertices[vid].texcoord;
   float3x3 normalMat33;
   normalMat33[0] = uniformsPerDraw->normalMat[0].xyz;
   normalMat33[1] = uniformsPerDraw->normalMat[1].xyz;
@@ -41,8 +51,12 @@ vertex VertexOut vertex_main(const device Vertex *vertices [[buffer(0)]],
   return vertexOut;
 }
 
-fragment half4 fragment_main(VertexOut inVertex [[stage_in]]) {
+fragment half4 fragment_main(VertexOut inVertex [[stage_in]],
+                             texture2d<half> baseColorTexture [[texture(0)]],
+                             sampler baseColorSampler [[sampler(0)]]) {
   // return half4(inVertex.color);
   // return half4(1, 1, 1, 1);
-  return half4(half3(inVertex.normal), 1);
+
+  // return half4(half3(inVertex.normal), 1);
+  return half4(baseColorTexture.sample(baseColorSampler, inVertex.texcoord));
 }

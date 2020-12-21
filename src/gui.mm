@@ -14,6 +14,12 @@ void initGUI(id<MTLDevice> device) {
   ImGui_ImplOSX_Init();
 }
 
+void destroyGUI() {
+  ImGui_ImplOSX_Shutdown();
+  ImGui_ImplMetal_Shutdown();
+  ImGui::DestroyContext();
+}
+
 BOOL guiHandleOSXEvent(NSEvent *event, MTKView *view) {
   return ImGui_ImplOSX_HandleEvent(event, view);
 }
@@ -37,5 +43,10 @@ void doGUI() {
   ImGui::Begin("Control Panel");
   ImGui::Checkbox("Render wireframe", &gGUI.wireframe);
   ImGui::End();
+}
+
+bool isGUIHandlingMouseDrag() {
+  bool result = ImGui::GetIO().WantCaptureMouse;
+  return result;
 }
 }
