@@ -56,6 +56,8 @@ cp -R ../resources/CesiumMilkTruck "${OUTPUT}.app/Resources/CesiumMilkTruck"
 cp -R ../resources/EnvironmentTest "${OUTPUT}.app/Resources/EnvironmentTest"
 cp -R ../resources/Sponza "${OUTPUT}.app/Resources/Sponza"
 cp -R ../resources/DamagedHelmet "${OUTPUT}.app/Resources/DamagedHelmet"
+cp -R ../resources/VC "${OUTPUT}.app/Resources/VC"
+cp -R ../resources/MetalRoughSpheres "${OUTPUT}.app/Resources/MetalRoughSpheres"
 
 trash "${OUTPUT}"
 
