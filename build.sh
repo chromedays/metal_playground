@@ -49,15 +49,27 @@ cp "${OUTPUT}" "${OUTPUT}.app/${OUTPUT}"
 cp ../resources/Info.plist "${OUTPUT}.app/Info.plist"
 mkdir "${OUTPUT}.app/Resources"
 mv shaders.metallib "${OUTPUT}.app/Resources/shaders.metallib"
-cp -R ../resources/AnimatedCube "${OUTPUT}.app/Resources/AnimatedCube"
-cp -R ../resources/BoxVertexColors "${OUTPUT}.app/Resources/BoxVertexColors"
-cp -R ../resources/Avocado "${OUTPUT}.app/Resources/Avocado"
-cp -R ../resources/CesiumMilkTruck "${OUTPUT}.app/Resources/CesiumMilkTruck"
-cp -R ../resources/EnvironmentTest "${OUTPUT}.app/Resources/EnvironmentTest"
-cp -R ../resources/Sponza "${OUTPUT}.app/Resources/Sponza"
-cp -R ../resources/DamagedHelmet "${OUTPUT}.app/Resources/DamagedHelmet"
-cp -R ../resources/VC "${OUTPUT}.app/Resources/VC"
-cp -R ../resources/MetalRoughSpheres "${OUTPUT}.app/Resources/MetalRoughSpheres"
+# cp -R ../resources/AnimatedCube "${OUTPUT}.app/Resources/AnimatedCube"
+# cp -R ../resources/BoxVertexColors "${OUTPUT}.app/Resources/BoxVertexColors"
+# cp -R ../resources/Avocado.glb "${OUTPUT}.app/Resources/Avocado.glb"
+# cp -R ../resources/CesiumMilkTruck "${OUTPUT}.app/Resources/CesiumMilkTruck"
+# cp -R ../resources/EnvironmentTest "${OUTPUT}.app/Resources/EnvironmentTest"
+# cp -R ../resources/Sponza.glb "${OUTPUT}.app/Resources/Sponza.glb"
+# cp -R ../resources/DamagedHelmet "${OUTPUT}.app/Resources/DamagedHelmet"
+# cp -R ../resources/VC "${OUTPUT}.app/Resources/VC"
+# cp -R ../resources/MetalRoughSpheres "${OUTPUT}.app/Resources/MetalRoughSpheres"
+# cp -R ../resources/MultiUVTest.glb "${OUTPUT}.app/Resources/MultiUVTest.glb"
+
+cp -R ../resources/gltf "${OUTPUT}.app/Resources/gltf"
+
+GLTF_FILE_NAMES=`ls ../resources/gltf`
+GLTF_TOML="files=[\n"
+for FILE_NAME in $GLTF_FILE_NAMES
+do
+    GLTF_TOML+="    \"${FILE_NAME}\",\n"
+done
+GLTF_TOML+="]"
+echo ${GLTF_TOML} > "${OUTPUT}.app/Resources/gltf_list.toml"
 
 trash "${OUTPUT}"
 

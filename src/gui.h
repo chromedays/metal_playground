@@ -7,12 +7,13 @@
 C_INTERFACE_BEGIN
 
 #define MAX_NUM_MODELS 100
+#define MAX_FILENAME_LENGTH 100
 
 typedef struct _GUI {
   bool wireframe;
 
   int numModels;
-  const char *models[MAX_NUM_MODELS];
+  char models[MAX_NUM_MODELS][MAX_FILENAME_LENGTH];
   int selectedModel;
 } GUI;
 
@@ -26,7 +27,7 @@ void guiEndFrameAndRender(id<MTLCommandBuffer> commandBufer,
                           id<MTLRenderCommandEncoder> renderEncoder);
 
 void doGUI(bool *shouldLoadNewModel);
-bool isGUIHandlingMouseDrag();
+bool isGUIHandlingMouseInput();
 
 void guiDemo();
 

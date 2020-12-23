@@ -30,7 +30,7 @@ static void tryExpand(String *str, int newLen) {
     char *oldBuf = str->buf;
     int oldCap = str->cap;
     str->cap = newCap;
-    str->buf = MALLOC_ARRAY(char, str->cap);
+    str->buf = MMALLOC_ARRAY(char, str->cap);
     memcpy(str->buf, oldBuf, oldCap);
     free(oldBuf);
   }

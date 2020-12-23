@@ -161,10 +161,14 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   LOG("Loading gltf (%s)", [basePath UTF8String]);
 
   cgltf_options options = {0};
-  NSString *filePath =
-      [basePath stringByAppendingPathComponent:
-                    [[basePath lastPathComponent]
-                        stringByAppendingPathExtension:@"gltf"]];
+  NSString *filePath;
+  if ([[basePath pathExtension] isEqualToString:@"glb"]) {
+    filePath = basePath;
+  } else {
+    filePath = [basePath stringByAppendingPathComponent:
+                             [[basePath lastPathComponent]
+                                 stringByAppendingPathExtension:@"gltf"]];
+  }
 
   cgltf_data *gltf;
   cgltf_result gltfLoadResult =
@@ -173,7 +177,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   cgltf_load_buffers(&options, gltf, [filePath UTF8String]);
 
   model->numTextures = gltf->textures_count;
-  model->textures = (id<MTLTexture> __strong *)MALLOC_ARRAY_ZEROES(
+  model->textures = (id<MTLTexture> __strong *)MMALLOC_ARRAY_ZEROES(
       id<MTLTexture> __strong, model->numTextures);
 
   id<MTLCommandBuffer> commandBuffer = [gRenderer.queue commandBuffer];
@@ -183,13 +187,24 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   for (cgltf_size textureIndex = 0; textureIndex < gltf->images_count;
        ++textureIndex) {
     cgltf_image *gltfImage = &gltf->images[textureIndex];
-    NSString *imageFilePath =
-        [basePath stringByAppendingPathComponent:
-                      [NSString stringWithCString:gltfImage->uri
-                                         encoding:NSUTF8StringEncoding]];
     int w, h, numComponents;
-    stbi_uc *data = stbi_load([imageFilePath UTF8String], &w, &h,
-                              &numComponents, STBI_rgb_alpha);
+    stbi_uc *data;
+    if (gltfImage->buffer_view) {
+      data = stbi_load_from_memory(
+          (uint8_t *)gltfImage->buffer_view->buffer->data +
+              gltfImage->buffer_view->offset,
+          gltfImage->buffer_view->size, &w, &h, &numComponents, STBI_rgb_alpha);
+    } else {
+      NSString *imageFilePath =
+          [basePath stringByAppendingPathComponent:
+                        [NSString stringWithCString:gltfImage->uri
+                                           encoding:NSUTF8StringEncoding]];
+
+      data = stbi_load([imageFilePath UTF8String], &w, &h, &numComponents,
+                       STBI_rgb_alpha);
+    }
+    ASSERT(data);
+
     MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor
         texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
                                      width:w
@@ -216,7 +231,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   [commandBuffer commit];
 
   model->numSamplers = gltf->samplers_count;
-  model->samplers = (id<MTLSamplerState> __strong *)MALLOC_ARRAY_ZEROES(
+  model->samplers = (id<MTLSamplerState> __strong *)MMALLOC_ARRAY_ZEROES(
       id<MTLSamplerState> __strong, model->numSamplers);
 
   for (cgltf_size samplerIndex = 0; samplerIndex < gltf->samplers_count;
@@ -286,7 +301,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   }
 
   model->numMaterials = gltf->materials_count;
-  model->materials = MALLOC_ARRAY_ZEROES(Material, model->numMaterials);
+  model->materials = MMALLOC_ARRAY_ZEROES(Material, model->numMaterials);
   for (cgltf_size materialIndex = 0; materialIndex < gltf->materials_count;
        ++materialIndex) {
     cgltf_material *gltfMaterial = &gltf->materials[materialIndex];
@@ -317,7 +332,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   }
 
   model->numMeshes = gltf->meshes_count;
-  model->meshes = MALLOC_ARRAY_ZEROES(Mesh, model->numMeshes);
+  model->meshes = MMALLOC_ARRAY_ZEROES(Mesh, model->numMeshes);
 
   int vertexBufferSize = 0;
   int indexBufferSize = 0;
@@ -327,7 +342,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
     Mesh *mesh = &model->meshes[meshIndex];
 
     mesh->numSubMeshes = gltfMesh->primitives_count;
-    mesh->subMeshes = MALLOC_ARRAY_ZEROES(SubMesh, mesh->numSubMeshes);
+    mesh->subMeshes = MMALLOC_ARRAY_ZEROES(SubMesh, mesh->numSubMeshes);
 
     for (cgltf_size primIndex = 0; primIndex < gltfMesh->primitives_count;
          ++primIndex) {
@@ -335,7 +350,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
       SubMesh *subMesh = &mesh->subMeshes[primIndex];
 
       subMesh->numIndices = prim->indices->count;
-      subMesh->indices = MALLOC_ARRAY(VertexIndex, subMesh->numIndices);
+      subMesh->indices = MMALLOC_ARRAY(VertexIndex, subMesh->numIndices);
       VertexIndex maxIndex = 0;
       for (cgltf_size i = 0; i < prim->indices->count; ++i) {
         subMesh->indices[i] = cgltf_accessor_read_index(prim->indices, i);
@@ -345,7 +360,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
       }
 
       subMesh->numVertices = maxIndex + 1;
-      subMesh->vertices = MALLOC_ARRAY_ZEROES(Vertex, subMesh->numVertices);
+      subMesh->vertices = MMALLOC_ARRAY_ZEROES(Vertex, subMesh->numVertices);
       for (int i = 0; i < subMesh->numVertices; ++i) {
         subMesh->vertices[i].color = (Float4){1, 1, 1, 1};
       }
@@ -436,7 +451,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   }
 
   model->numNodes = gltf->nodes_count;
-  model->nodes = MALLOC_ARRAY_ZEROES(SceneNode, model->numNodes);
+  model->nodes = MMALLOC_ARRAY_ZEROES(SceneNode, model->numNodes);
   for (cgltf_size nodeIndex = 0; nodeIndex < gltf->nodes_count; ++nodeIndex) {
     cgltf_node *gltfNode = &gltf->nodes[nodeIndex];
     SceneNode *node = &model->nodes[nodeIndex];
@@ -460,7 +475,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
 
     if (gltfNode->children_count > 0) {
       node->numChildNodes = gltfNode->children_count;
-      node->childNodes = MALLOC_ARRAY(int, node->numChildNodes);
+      node->childNodes = MMALLOC_ARRAY(int, node->numChildNodes);
       for (cgltf_size childIndex = 0; childIndex < gltfNode->children_count;
            ++childIndex) {
         node->childNodes[childIndex] =
@@ -470,7 +485,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
   }
 
   model->numScenes = gltf->scenes_count;
-  model->scenes = MALLOC_ARRAY_ZEROES(Scene, model->numScenes);
+  model->scenes = MMALLOC_ARRAY_ZEROES(Scene, model->numScenes);
 
   for (cgltf_size sceneIndex = 0; sceneIndex < gltf->scenes_count;
        ++sceneIndex) {
@@ -479,7 +494,7 @@ void loadGLTFModel(Model *model, NSString *basePath) {
 
     if (gltfScene->nodes_count > 0) {
       scene->numNodes = gltfScene->nodes_count;
-      scene->nodes = MALLOC_ARRAY(int, scene->numNodes);
+      scene->nodes = MMALLOC_ARRAY(int, scene->numNodes);
 
       for (cgltf_size nodeIndex = 0; nodeIndex < gltfScene->nodes_count;
            ++nodeIndex) {
@@ -497,35 +512,35 @@ void destroyModel(Model *model) {
   model->gpuVertexBuffer = nil;
 
   for (int i = 0; i < model->numScenes; ++i) {
-    FREE(model->scenes[i].nodes);
+    MFREE(model->scenes[i].nodes);
   }
-  FREE(model->scenes);
+  MFREE(model->scenes);
 
   for (int i = 0; i < model->numNodes; ++i) {
-    FREE(model->nodes[i].childNodes);
+    MFREE(model->nodes[i].childNodes);
   }
-  FREE(model->nodes);
+  MFREE(model->nodes);
 
   for (int i = 0; i < model->numMeshes; ++i) {
     for (int j = 0; j < model->meshes[i].numSubMeshes; ++j) {
-      FREE(model->meshes[i].subMeshes[j].vertices);
-      FREE(model->meshes[i].subMeshes[j].indices);
+      MFREE(model->meshes[i].subMeshes[j].vertices);
+      MFREE(model->meshes[i].subMeshes[j].indices);
     }
-    FREE(model->meshes[i].subMeshes);
+    MFREE(model->meshes[i].subMeshes);
   }
-  FREE(model->meshes);
+  MFREE(model->meshes);
 
-  FREE(model->materials);
+  MFREE(model->materials);
 
   for (int i = 0; i < model->numSamplers; ++i) {
     model->samplers[i] = nil;
   }
-  FREE(model->samplers);
+  MFREE(model->samplers);
 
   for (int i = 0; i < model->numTextures; ++i) {
     model->textures[i] = nil;
   }
-  FREE(model->textures);
+  MFREE(model->textures);
 }
 
 void renderMesh(const Model *model, const Mesh *mesh,
@@ -605,17 +620,24 @@ void renderModel(const Model *model,
 
 static void loadModel() {
   NSBundle *mainBundle = [NSBundle mainBundle];
-  NSString *gltfBasePath = [mainBundle
-      pathForResource:[NSString
-                          stringWithCString:gGUI.models[gGUI.selectedModel]
-                                   encoding:NSUTF8StringEncoding]
-               ofType:nil];
+  NSString *gltfRelPath =
+      [@"gltf" stringByAppendingPathComponent:
+                   [NSString stringWithCString:gGUI.models[gGUI.selectedModel]
+                                      encoding:NSUTF8StringEncoding]];
+  NSString *gltfBasePath = [mainBundle pathForResource:gltfRelPath ofType:nil];
+  if (!gltfBasePath) {
+    gltfBasePath = [mainBundle pathForResource:gltfRelPath ofType:@"glb"];
+  }
+  ASSERT(gltfBasePath);
   loadGLTFModel(&gRenderer.model, gltfBasePath);
 }
 
 void initRenderer(MTKView *view) {
   gRenderer.device = MTLCreateSystemDefaultDevice();
   view.device = gRenderer.device;
+
+  initGUI(gRenderer.device);
+
   gRenderer.queue = [gRenderer.device newCommandQueue];
   gRenderer.viewPixelFormat = view.colorPixelFormat;
   gRenderer.viewDepthFormat = view.depthStencilPixelFormat;
@@ -675,18 +697,16 @@ void initRenderer(MTKView *view) {
   gRenderer.cam.distance = 5;
   gRenderer.cam.phi = -90;
   gRenderer.cam.theta = 0;
-
-  initGUI(gRenderer.device);
 }
 
 void destroyRenderer() {
-  destroyGUI();
   destroyModel(&gRenderer.model);
   gRenderer.defaultSampler = nil;
   gRenderer.depthStencilState = nil;
   gRenderer.pipeline = nil;
   gRenderer.library = nil;
   gRenderer.queue = nil;
+  destroyGUI();
   gRenderer.device = nil;
 }
 
@@ -764,9 +784,13 @@ void onResizeWindow() {
 }
 
 void onMouseDragged(float dx, float dy) {
-  if (!isGUIHandlingMouseDrag()) {
+  if (!isGUIHandlingMouseInput()) {
     gInput.mouseDelta = (Float2){dx, dy};
   }
 }
 
-void onMouseScrolled(float dy) { gInput.wheelDelta = dy; }
+void onMouseScrolled(float dy) {
+  if (!isGUIHandlingMouseInput()) {
+    gInput.wheelDelta = dy;
+  }
+}
