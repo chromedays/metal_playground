@@ -1,6 +1,8 @@
 #include "renderer.h"
 #include "gui.h"
 #import <AppKit/AppKit.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -9,11 +11,28 @@ bool gRunning;
 float gScreenWidth = 1280;
 float gScreenHeight = 720;
 
-@interface ViewDelegate : NSObject <MTKViewDelegate>
+@interface ViewDelegate : NSObject <MTKViewDelegate> {
+  uint64_t lastTimeCounter;
+  mach_timebase_info_data_t timeBase;
+}
 @end
 @implementation ViewDelegate
+
+- (instancetype)init {
+  self = [super init];
+  lastTimeCounter = mach_absolute_time();
+  mach_timebase_info(&timeBase);
+  return self;
+}
+
 - (void)drawInMTKView:(MTKView *)view {
-  render(view, 1.f / view.preferredFramesPerSecond);
+  uint64_t currTimeCounter = mach_absolute_time();
+  uint64_t elapsedCounter = currTimeCounter - lastTimeCounter;
+  uint64_t elapsedMS =
+      elapsedCounter * timeBase.numer / (1000000 * timeBase.denom);
+  lastTimeCounter = currTimeCounter;
+  LOG("%llu", elapsedMS);
+  render(view, elapsedMS / 1000.f);
 }
 
 - (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size {

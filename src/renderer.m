@@ -765,7 +765,8 @@ void render(MTKView *view, float dt) {
   guiEndFrameAndRender(commandBuffer, renderEncoder);
 
   [renderEncoder endEncoding];
-  [commandBuffer presentDrawable:view.currentDrawable];
+  [commandBuffer presentDrawable:view.currentDrawable
+            afterMinimumDuration:1 / 60.f];
   [commandBuffer commit];
 
   gInput.mouseDelta = (Float2){0};
