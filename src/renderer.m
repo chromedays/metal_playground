@@ -10,17 +10,18 @@
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
 
+typedef uint32_t VertexIndex;
+#define METAL_INDEX_TYPE MTLIndexTypeUInt32
+#define METAL_CONSTANT_ALIGNMENT 256
+#define MAX_NUM_FRAMES_IN_FLIGHT 3
+#define NUM_BUFFERS_IN_FLIGHT MAX_NUM_FRAMES_IN_FLIGHT
+
 typedef struct _Vertex {
   Float3 position;
   Float4 color;
   Float2 texcoord;
   Float3 normal;
 } Vertex;
-
-typedef uint32_t VertexIndex;
-#define METAL_INDEX_TYPE MTLIndexTypeUInt32
-#define METAL_CONSTANT_ALIGNMENT 256
-#define NUM_BUFFERS_IN_FLIGHT 3
 
 typedef struct _UniformsPerView {
   Mat4 viewMat;
@@ -132,13 +133,31 @@ Mat4 getOrbitCameraMatrix(const OrbitCamera *cam) {
   return lookAt;
 }
 
+/*
+ 
+ ======================================================================
+ ========       ====================  =================================
+ ========  ====  ===================  =================================
+ ========  ====  ===================  =================================
+ ==   ===  ===   ===   ===  = ======  ===   ===  =   ====   ===  =   ==
+ =  =  ==      ====  =  ==     ===    ==  =  ==    =  ==  =  ==    =  =
+ ==    ==  ====  ==     ==  =  ==  =  ==     ==  =======     ==  ======
+ ====  ==  ====  ==  =====  =  ==  =  ==  =====  =======  =====  ======
+ =  =  ==  ====  ==  =  ==  =  ==  =  ==  =  ==  =======  =  ==  ======
+ ==   ===  ====  ===   ===  =  ===    ===   ===  ========   ===  ======
+ ======================================================================
+ 
+*/
 static struct {
   id<MTLDevice> device;
   id<MTLCommandQueue> queue;
   MTLPixelFormat viewPixelFormat;
   MTLPixelFormat viewDepthFormat;
 
+  dispatch_semaphore_t inFlightSemaphore;
+
   id<MTLLibrary> library;
+
   id<MTLRenderPipelineState> pipeline;
   id<MTLDepthStencilState> depthStencilState;
 
@@ -150,7 +169,54 @@ static struct {
   OrbitCamera cam;
 
   UniformsPerView uniformsPerView;
+
+  id<MTLTexture> baseColorGBuffer;
+
+  MTLRenderPassDescriptor *deferredRenderPassDesc;
 } gRenderer;
+
+typedef enum _DeferredRenderingAttachment {
+  DeferredRenderingAttachment_BaseColor = 0,
+  DeferredRenderingAttachment_View,
+} DeferredRenderingAttachment;
+
+typedef struct _DeferredRenderingPipeline {
+  struct {
+    id<MTLTexture> baseColor;
+  } gbufferTextures;
+
+  MTLRenderPassDescriptor *renderPassDesc;
+
+  id<MTLRenderPipelineState> gbufferPipeline;
+  id<MTLRenderPipelineState> lightPipeline;
+} DeferredRenderingPipeline;
+
+void renderModel(const Model *model, id<MTLRenderCommandEncoder> renderEncoder);
+
+void renderWithDeferredPipeline(const DeferredRenderingPipeline *pipeline,
+                                id<MTLCommandBuffer> commandBuffer) {
+  id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer
+      renderCommandEncoderWithDescriptor:pipeline->renderPassDesc];
+
+  // TODO: Setup render state
+
+  [renderEncoder setRenderPipelineState:pipeline->gbufferPipeline];
+  renderModel(&gRenderer.model, renderEncoder);
+  [renderEncoder setRenderPipelineState:pipeline->lightPipeline];
+  static struct {
+    Float2 position;
+    Float2 texcoord;
+  } fstVertices[] = {
+      {.position = {0, 0}, .texcoord = {0, 0}},
+  };
+  [renderEncoder setVertexBytes:fstVertices
+                         length:sizeof(fstVertices)
+                        atIndex:0];
+  [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle
+                    vertexStart:0
+                    vertexCount:3];
+  [renderEncoder endEncoding];
+}
 
 static struct {
   Float2 mouseDelta;
@@ -632,6 +698,35 @@ static void loadModel() {
   loadGLTFModel(&gRenderer.model, gltfBasePath);
 }
 
+static id<MTLTexture> createBaseColorGBuffer() {
+  MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor
+      texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                   width:gScreenWidth
+                                  height:gScreenHeight
+                               mipmapped:NO];
+  textureDesc.textureType = MTLTextureType2D;
+  textureDesc.usage |= MTLTextureUsageRenderTarget;
+  textureDesc.storageMode = MTLStorageModeMemoryless;
+  id<MTLTexture> baseColorGBuffer =
+      [gRenderer.device newTextureWithDescriptor:textureDesc];
+  return baseColorGBuffer;
+}
+
+/*
+ 
+ ====================================================================================
+ ======================       ====================  =================================
+ ======================  ====  ===================  =================================
+ =================  ===  ====  ===================  =================================
+ =  ==  = ===  ==    ==  ===   ===   ===  = ======  ===   ===  =   ====   ===  =   ==
+ =====     =======  ===      ====  =  ==     ===    ==  =  ==    =  ==  =  ==    =  =
+ =  ==  =  ==  ===  ===  ====  ==     ==  =  ==  =  ==     ==  =======     ==  ======
+ =  ==  =  ==  ===  ===  ====  ==  =====  =  ==  =  ==  =====  =======  =====  ======
+ =  ==  =  ==  ===  ===  ====  ==  =  ==  =  ==  =  ==  =  ==  =======  =  ==  ======
+ =  ==  =  ==  ===   ==  ====  ===   ===  =  ===    ===   ===  ========   ===  ======
+ ====================================================================================
+ 
+*/
 void initRenderer(MTKView *view) {
   gRenderer.device = MTLCreateSystemDefaultDevice();
   view.device = gRenderer.device;
@@ -641,6 +736,9 @@ void initRenderer(MTKView *view) {
   gRenderer.queue = [gRenderer.device newCommandQueue];
   gRenderer.viewPixelFormat = view.colorPixelFormat;
   gRenderer.viewDepthFormat = view.depthStencilPixelFormat;
+
+  gRenderer.inFlightSemaphore =
+      dispatch_semaphore_create(MAX_NUM_FRAMES_IN_FLIGHT);
 
   NSBundle *mainBundle = [NSBundle mainBundle];
   NSString *shaderPath = [mainBundle pathForResource:@"shaders"
@@ -658,11 +756,16 @@ void initRenderer(MTKView *view) {
   gRenderer.pipeline =
       [gRenderer.device newRenderPipelineStateWithDescriptor:pipelineDesc
                                                        error:nil];
+
   MTLDepthStencilDescriptor *depthStencilDesc = [MTLDepthStencilDescriptor new];
   depthStencilDesc.depthCompareFunction = MTLCompareFunctionGreaterEqual;
   depthStencilDesc.depthWriteEnabled = YES;
   gRenderer.depthStencilState =
       [gRenderer.device newDepthStencilStateWithDescriptor:depthStencilDesc];
+
+  pipelineDesc = [[MTLRenderPipelineDescriptor alloc] init];
+  pipelineDesc.vertexFunction =
+      [gRenderer.library newFunctionWithName:@"gbuffer"];
 
   MTLTextureDescriptor *defaultBaseColorTextureDesc = [MTLTextureDescriptor
       texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
@@ -697,9 +800,41 @@ void initRenderer(MTKView *view) {
   gRenderer.cam.distance = 5;
   gRenderer.cam.phi = -90;
   gRenderer.cam.theta = 0;
+
+  gRenderer.deferredRenderPassDesc = [MTLRenderPassDescriptor new];
+  {
+    MTLRenderPassColorAttachmentDescriptor *baseColorAttachment =
+        gRenderer.deferredRenderPassDesc
+            .colorAttachments[DeferredRenderingAttachment_BaseColor];
+    baseColorAttachment.loadAction = MTLLoadActionDontCare;
+    baseColorAttachment.storeAction = MTLStoreActionDontCare;
+  }
+  {
+    MTLRenderPassColorAttachmentDescriptor *viewColorAttachment =
+        gRenderer.deferredRenderPassDesc
+            .colorAttachments[DeferredRenderingAttachment_View];
+    viewColorAttachment.loadAction = MTLLoadActionClear;
+    viewColorAttachment.storeAction = MTLStoreActionDontCare;
+    viewColorAttachment.clearColor = MTLClearColorMake(1, 0, 0, 1);
+  }
+  gRenderer.deferredRenderPassDesc.depthAttachment.loadAction =
+      MTLLoadActionClear;
+  gRenderer.deferredRenderPassDesc.depthAttachment.storeAction =
+      MTLStoreActionDontCare;
+  gRenderer.deferredRenderPassDesc.stencilAttachment.loadAction =
+      MTLLoadActionClear;
+  gRenderer.deferredRenderPassDesc.stencilAttachment.storeAction =
+      MTLStoreActionDontCare;
+  gRenderer.deferredRenderPassDesc.depthAttachment.clearDepth = 0;
+  gRenderer.deferredRenderPassDesc.stencilAttachment.clearStencil = 0;
+
+  gRenderer.baseColorGBuffer = createBaseColorGBuffer();
+  gRenderer.deferredRenderPassDesc.colorAttachments[0].texture =
+      gRenderer.baseColorGBuffer;
 }
 
 void destroyRenderer() {
+  gRenderer.deferredRenderPassDesc = nil;
   destroyModel(&gRenderer.model);
   gRenderer.defaultSampler = nil;
   gRenderer.depthStencilState = nil;
@@ -710,7 +845,7 @@ void destroyRenderer() {
   gRenderer.device = nil;
 }
 
-void render(MTKView *view, float dt) {
+void render(MTKView *view, float dt __unused) {
   gRenderer.cam.phi -= gInput.mouseDelta.x * 2.f;
   gRenderer.cam.theta -= gInput.mouseDelta.y * 2.f;
   if (gRenderer.cam.theta > 89.9f) {
@@ -737,7 +872,17 @@ void render(MTKView *view, float dt) {
                                     0.01f, 1000.f);
   gRenderer.uniformsPerView.projMat = projection;
 
+  dispatch_semaphore_wait(gRenderer.inFlightSemaphore, DISPATCH_TIME_FOREVER);
+
+  gRenderer.deferredRenderPassDesc
+      .colorAttachments[DeferredRenderingAttachment_View]
+      .texture = view.currentDrawable.texture;
+
   id<MTLCommandBuffer> commandBuffer = [gRenderer.queue commandBuffer];
+  __block dispatch_semaphore_t blockSemaphore = gRenderer.inFlightSemaphore;
+  [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _ __unused) {
+    dispatch_semaphore_signal(blockSemaphore);
+  }];
   MTLRenderPassDescriptor *renderPassDescriptor =
       view.currentRenderPassDescriptor;
   renderPassDescriptor.colorAttachments[0].clearColor =
@@ -766,7 +911,7 @@ void render(MTKView *view, float dt) {
 
   [renderEncoder endEncoding];
   [commandBuffer presentDrawable:view.currentDrawable
-            afterMinimumDuration:1 / 60.f];
+            afterMinimumDuration:1.f / view.preferredFramesPerSecond];
   [commandBuffer commit];
 
   gInput.mouseDelta = (Float2){0};
@@ -774,14 +919,9 @@ void render(MTKView *view, float dt) {
 }
 
 void onResizeWindow() {
-  // MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor
-  //     texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
-  //                                  width:gScreenWidth
-  //                                 height:gScreenHeight
-  //                              mipmapped:NO];
-  // textureDesc.textureType = MTLTextureType2D;
-  // textureDesc.usage |= MTLTextureUsageRenderTarget;
-  // textureDesc.storageMode = MTLStorageModeMemoryless;
+  gRenderer.baseColorGBuffer = createBaseColorGBuffer();
+  gRenderer.deferredRenderPassDesc.colorAttachments[0].texture =
+      gRenderer.baseColorGBuffer;
 }
 
 void onMouseDragged(float dx, float dy) {

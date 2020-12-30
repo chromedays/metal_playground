@@ -45,6 +45,8 @@ float gScreenHeight = 720;
 @interface ViewController : NSViewController {
   MTKView *mtkView;
   ViewDelegate *mtkViewDelegate;
+  NSPoint lastMousePos;
+  Float2 mouseDelta;
 }
 @end
 
@@ -65,7 +67,7 @@ float gScreenHeight = 720;
   initRenderer(mtkView);
   mtkView.delegate = mtkViewDelegate;
 
-  [mtkView setPreferredFramesPerSecond:60];
+  [mtkView setPreferredFramesPerSecond:150];
 
   NSTrackingArea *trackingArea = [[NSTrackingArea alloc]
       initWithRect:NSZeroRect
@@ -88,10 +90,16 @@ float gScreenHeight = 720;
                                        return event;
                                      }
                                    }];
+
+  lastMousePos = mtkView.window.mouseLocationOutsideOfEventStream;
 }
 
 - (void)mouseMoved:(NSEvent *)event {
   guiHandleOSXEvent(event, mtkView);
+  NSPoint currMousePos = mtkView.window.mouseLocationOutsideOfEventStream;
+  mouseDelta = (Float2){currMousePos.x - lastMousePos.x,
+                        currMousePos.y - lastMousePos.y};
+  lastMousePos = currMousePos;
 }
 
 - (void)mouseDown:(NSEvent *)event {
@@ -105,12 +113,11 @@ float gScreenHeight = 720;
 - (void)mouseDragged:(NSEvent *)event {
   guiHandleOSXEvent(event, mtkView);
 
-  // NSPoint mousePos = [mtkView convertPoint:event.locationInWindow
-  // fromView:nil]; mousePos = NSMakePoint(mousePos.x,
-  // mtkView.bounds.size.height - mousePos.y); onMouseDragged(mousePos.x,
-  // mousePos.y);
-
-  onMouseDragged([event deltaX], -[event deltaY]);
+  NSPoint currMousePos = mtkView.window.mouseLocationOutsideOfEventStream;
+  mouseDelta = (Float2){currMousePos.x - lastMousePos.x,
+                        currMousePos.y - lastMousePos.y};
+  lastMousePos = currMousePos;
+  onMouseDragged(mouseDelta.x, mouseDelta.y);
 }
 
 - (void)scrollWheel:(NSEvent *)event {
