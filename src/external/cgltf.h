@@ -771,6 +771,13 @@ cgltf_result cgltf_copy_extras_json(const cgltf_data* data, const cgltf_extras* 
 #endif
 
 #ifdef CGLTF_IMPLEMENTATION
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wextra-semi-stmt"
+#pragma clang diagnostic ignored "-Wbad-function-cast"
+#pragma clang diagnostic ignored "-Wcast-align"
+#pragma clang diagnostic ignored "-Wswitch-enum"
+#pragma clang diagnostic ignored "-Wcast-qual"
+#pragma clang diagnostic ignored "-Wcovered-switch-default"
 
 #include <stdint.h> /* For uint8_t, uint32_t */
 #include <string.h> /* For strncpy */
@@ -6015,6 +6022,8 @@ static void jsmn_init(jsmn_parser *parser) {
 /*
  * -- jsmn.c end --
  */
+
+#pragma clang diagnostic pop
 
 #endif /* #ifdef CGLTF_IMPLEMENTATION */
 
