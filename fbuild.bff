@@ -49,11 +49,11 @@ Compiler('Compiler-Clang') {
 #if __WINDOWS__
 .clangWindowsConfig = [
     Using(.clangBaseConfig)
-    .compilerOptions + ' -Z7 -D_CRT_SECURE_NO_WARNINGS' +
+    .compilerOptions + ' -Z7 -Od -D_CRT_SECURE_NO_WARNINGS' +
     ' -I"$VSIncludePath$" -I"$WindowsSDKIncludePath$" -I"$WindowsSDKSharedIncludePath$" -I"$WindowsSDKUcrtIncludePath$"'
     .cCompilerFlags + ' -TC'
     .cppCompilerFlags + ' -TP -std:c++17'
-    .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$"'
+    .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -DEBUG -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$"'
 
     .cUnityOutputPattern = 'UnityC*.c'
     .cppUnityOutputPattern = 'UnityCpp*.cpp'

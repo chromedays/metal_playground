@@ -6,7 +6,7 @@
 #define STR_DEFAULT_CAP 64
 
 void destroyString(String *str) {
-  free(str->buf);
+  MFREE(str->buf);
   *str = (String){0};
 }
 
@@ -32,7 +32,7 @@ static void tryExpand(String *str, int newLen) {
     str->cap = newCap;
     str->buf = MMALLOC_ARRAY(char, str->cap);
     memcpy(str->buf, oldBuf, oldCap);
-    free(oldBuf);
+    MFREE(oldBuf);
   }
 }
 
