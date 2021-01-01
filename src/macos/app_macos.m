@@ -9,7 +9,7 @@
 #include <mach/mach_time.h>
 
 static App gApp;
-App *getApp() { return &gApp; }
+App *getApp(void) { return &gApp; }
 
 @interface ViewDelegate : NSObject <MTKViewDelegate> {
   uint64_t lastTimeCounter;

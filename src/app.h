@@ -14,4 +14,4 @@ typedef void (*OnCleanup)(void);
 int runMain(int argc, char **argv, const char *title, int width, int height,
             OnInit init, OnUpdate update, OnCleanup cleanup);
 
-App *getApp();
+App *getApp(void);
