@@ -1,5 +1,5 @@
 #include "renderer.h"
-#include "global.h"
+#include "app.h"
 #include "vmath.h"
 #include "gui.h"
 #include "memory.h"
@@ -710,7 +710,7 @@ void destroyRenderer(void) {
   gRenderer.device = nil;
 }
 
-void render(MTKView *view, float dt) {
+void render(MTKView *view, UNUSED float dt) {
   gRenderer.cam.phi -= gInput.mouseDelta.x * 2.f;
   gRenderer.cam.theta -= gInput.mouseDelta.y * 2.f;
   if (gRenderer.cam.theta > 89.9f) {
@@ -733,8 +733,9 @@ void render(MTKView *view, float dt) {
   }
 
   gRenderer.uniformsPerView.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
-  Mat4 projection = mat4Perspective(degToRad(60), gScreenWidth / gScreenHeight,
-                                    0.01f, 1000.f);
+  Mat4 projection = mat4Perspective(
+      degToRad(60), (float)getApp()->width / (float)getApp()->height, 0.01f,
+      1000.f);
   gRenderer.uniformsPerView.projMat = projection;
 
   id<MTLCommandBuffer> commandBuffer = [gRenderer.queue commandBuffer];

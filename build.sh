@@ -19,9 +19,9 @@ mkdir bin
 # ./FBuild Exe-playground-Unity -clean -verbose -showcmds
 if [[ $1 == "clean" ]]
 then
-./FBuild Exe-playground-Unity -clean
+./FBuild Exe-playground -clean
 else
-./FBuild Exe-playground-Unity
+./FBuild Exe-playground
 fi
 ./FBuild Exe-playground -compdb
 

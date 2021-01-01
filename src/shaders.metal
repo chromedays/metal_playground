@@ -38,9 +38,10 @@ vertex VertexOut vertex_main(const device Vertex *vertices [[buffer(0)]],
                              [[buffer(3)]],
                              uint vid [[vertex_id]]) {
   VertexOut vertexOut;
-  vertexOut.position = uniformsPerView->projMat * uniformsPerView->viewMat *
-                       uniformsPerDraw->modelMat *
-                       float4(vertices[vid].position, 1);
+  float4x4 mvp = uniformsPerView->projMat * uniformsPerView->viewMat *
+                 uniformsPerDraw->modelMat;
+  float4 posIn = float4(vertices[vid].position, 1);
+  vertexOut.position = mvp * posIn;
   vertexOut.color = vertices[vid].color;
   vertexOut.texcoord = vertices[vid].texcoord;
   float3x3 normalMat33;

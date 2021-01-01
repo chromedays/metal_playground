@@ -1,5 +1,4 @@
 #include "util.h"
-#include <corecrt_malloc.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32

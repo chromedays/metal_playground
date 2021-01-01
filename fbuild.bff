@@ -54,8 +54,11 @@ Compiler('Compiler-Clang') {
     .cCompilerFlags + ' -TC'
     .cppCompilerFlags + ' -TP -std:c++17'
     .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$"'
+
     .cUnityOutputPattern = 'UnityC*.c'
     .cppUnityOutputPattern = 'UnityCpp*.cpp'
+
+    .unityInputExcludePath = 'src/macos'
 ]
 #endif
 
@@ -72,6 +75,8 @@ Compiler('Compiler-Clang') {
     
     .cUnityOutputPattern = 'UnityC*.m'
     .cppUnityOutputPattern = 'UnityCpp*.mm'
+
+    .unityInputExcludePath = 'src/windows'
 ]
 #endif
 
@@ -90,6 +95,7 @@ ForEach(.projectConfig in .projectConfigs) {
     Unity('Unity-$projectName$-C') {
         .UnityInputPath = .inputPath
         .UnityInputPattern = .cFilePatterns
+        .UnityInputExcludePath = .unityInputExcludePath
         .UnityOutputPath = 'tmp'
         .UnityOutputPattern = .cUnityOutputPattern
     }
@@ -97,6 +103,7 @@ ForEach(.projectConfig in .projectConfigs) {
     Unity('Unity-$projectName$-Cpp') {
         .UnityInputPath = .inputPath
         .UnityInputPattern = .cppFilePatterns
+        .UnityInputExcludePath = .unityInputExcludePath
         .UnityOutputPath = 'tmp'
         .UnityOutputPattern = .cppUnityOutputPattern
     }
