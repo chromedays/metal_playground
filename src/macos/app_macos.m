@@ -65,7 +65,13 @@ App *getApp(void) { return &gApp; }
   initRenderer(mtkView);
   mtkView.delegate = mtkViewDelegate;
 
-  [mtkView setPreferredFramesPerSecond:60];
+  CGDisplayModeRef displayMode = CGDisplayCopyDisplayMode(CGMainDisplayID());
+  double refreshRate = CGDisplayModeGetRefreshRate(displayMode);
+  if ((int)refreshRate % 2 == 1) {
+    refreshRate += 1;
+  }
+  CGDisplayModeRelease(displayMode);
+  [mtkView setPreferredFramesPerSecond:refreshRate];
 
   NSTrackingArea *trackingArea = [[NSTrackingArea alloc]
       initWithRect:NSZeroRect

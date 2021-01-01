@@ -710,7 +710,7 @@ void destroyRenderer(void) {
   gRenderer.device = nil;
 }
 
-void render(MTKView *view, UNUSED float dt) {
+void render(MTKView *view, float dt) {
   gRenderer.cam.phi -= gInput.mouseDelta.x * 2.f;
   gRenderer.cam.theta -= gInput.mouseDelta.y * 2.f;
   if (gRenderer.cam.theta > 89.9f) {
@@ -766,8 +766,7 @@ void render(MTKView *view, UNUSED float dt) {
   guiEndFrameAndRender(commandBuffer, renderEncoder);
 
   [renderEncoder endEncoding];
-  [commandBuffer presentDrawable:view.currentDrawable
-            afterMinimumDuration:1 / 60.f];
+  [commandBuffer presentDrawable:view.currentDrawable];
   [commandBuffer commit];
 
   gInput.mouseDelta = (Float2){0};
