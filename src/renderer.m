@@ -618,7 +618,7 @@ void renderModel(const Model *model,
   }
 }
 
-static void loadModel() {
+static void loadModel(void) {
   NSBundle *mainBundle = [NSBundle mainBundle];
   NSString *gltfRelPath =
       [@"gltf" stringByAppendingPathComponent:
@@ -699,7 +699,7 @@ void initRenderer(MTKView *view) {
   gRenderer.cam.theta = 0;
 }
 
-void destroyRenderer() {
+void destroyRenderer(void) {
   destroyModel(&gRenderer.model);
   gRenderer.defaultSampler = nil;
   gRenderer.depthStencilState = nil;
@@ -773,7 +773,7 @@ void render(MTKView *view, float dt) {
   gInput.wheelDelta = 0;
 }
 
-void onResizeWindow() {
+void onResizeWindow(void) {
   // MTLTextureDescriptor *textureDesc = [MTLTextureDescriptor
   //     texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
   //                                  width:gScreenWidth

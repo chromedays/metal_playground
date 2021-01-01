@@ -1,3 +1,12 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wreserved-id-macro"
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#pragma clang diagnostic ignored "-Wcomma"
+#pragma clang diagnostic ignored "-Wimplicit-int-conversion"
+#pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
+#pragma clang diagnostic ignored "-Wswitch-enum"
+
 /*
 
   MIT License
@@ -2248,3 +2257,5 @@ toml_datum_t toml_timestamp_in(const toml_table_t* arr, const char* key)
 	}
 	return ret;
 }	
+
+#pragma clang diagnostic pop

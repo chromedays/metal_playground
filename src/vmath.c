@@ -1,6 +1,8 @@
 #include "vmath.h"
 #include <math.h>
 
+C_INTERFACE_BEGIN
+
 float degToRad(float deg) {
   float rad = deg * MATH_PI / 180.f;
   return rad;
@@ -242,7 +244,7 @@ Mat4 mat4Transpose(Mat4 m) {
   return transposed;
 }
 
-Mat4 mat4Identity() {
+Mat4 mat4Identity(void) {
   Mat4 identity = {{
       {1, 0, 0, 0},
       {0, 1, 0, 0},
@@ -348,3 +350,5 @@ Float4 quatRotateAroundAxis(Float3 axis, float angleRad) {
 
   return quat;
 }
+
+C_INTERFACE_END

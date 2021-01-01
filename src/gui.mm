@@ -53,7 +53,7 @@ void initGUI(id<MTLDevice> device) {
   fclose(f);
 }
 
-void destroyGUI() {
+void destroyGUI(void) {
   ImGui_ImplOSX_Shutdown();
   ImGui_ImplMetal_Shutdown();
   ImGui::DestroyContext();
@@ -93,7 +93,7 @@ void doGUI(bool *shouldLoadNewModel) {
   ImGui::End();
 }
 
-bool isGUIHandlingMouseInput() {
+bool isGUIHandlingMouseInput(void) {
   bool result = ImGui::GetIO().WantCaptureMouse;
   return result;
 }

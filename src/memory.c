@@ -1,6 +1,10 @@
 #include "util.h"
+#include <corecrt_malloc.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <malloc.h>
+#endif
 
 #ifdef __APPLE__
 #define MIN_ALIGNMENT 16
@@ -23,7 +27,12 @@ void *allocate(int size, int alignment) {
     alignment = MIN_ALIGNMENT;
   }
   size = alignUp(size, alignment);
-  void *mem = aligned_alloc(alignment, size);
+  void *mem =
+#ifdef _WIN32
+      _aligned_malloc(size, alignment);
+#else
+      aligned_alloc(alignment, size);
+#endif
 
   return mem;
 }
@@ -33,10 +42,21 @@ void *allocateZeroes(int size, int alignment) {
     alignment = MIN_ALIGNMENT;
   }
   size = alignUp(size, alignment);
-  void *mem = aligned_alloc(alignment, size);
+  void *mem =
+#ifdef _WIN32
+      _aligned_malloc(size, alignment);
+#else
+      aligned_alloc(alignment, size);
+#endif
   memset(mem, 0, size);
 
   return mem;
 }
 
-void deallocate(void *memory) { free(memory); }
+void deallocate(void *memory) {
+#ifdef _WIN32
+  _aligned_free(memory);
+#else
+  free(memory);
+#endif
+}

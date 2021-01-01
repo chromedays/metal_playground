@@ -1,12 +1,12 @@
 #include "util.h"
 
-#define MMALLOC(type) (type *)allocate(sizeof(type), _Alignof(type))
+#define MMALLOC(type) (type *)allocate(sizeof(type), (int)_Alignof(type))
 #define MMALLOC_ZEROES(type)                                                   \
-  (type *)allocateZeroes(sizeof(type), _Alignof(type))
+  (type *)allocateZeroes(sizeof(type), (int)_Alignof(type))
 #define MMALLOC_ARRAY(type, count)                                             \
-  (type *)allocate(sizeof(type) * count, _Alignof(type))
+  (type *)allocate(sizeof(type) * count, (int)_Alignof(type))
 #define MMALLOC_ARRAY_ZEROES(type, count)                                      \
-  (type *)allocateZeroes(sizeof(type) * count, _Alignof(type))
+  (type *)allocateZeroes(sizeof(type) * count, (int)_Alignof(type))
 #define MFREE(p) deallocate(p)
 
 C_INTERFACE_BEGIN

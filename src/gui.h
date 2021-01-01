@@ -20,15 +20,15 @@ typedef struct _GUI {
 extern GUI gGUI;
 
 void initGUI(id<MTLDevice> device);
-void destroyGUI();
+void destroyGUI(void);
 BOOL guiHandleOSXEvent(NSEvent *event, MTKView *view);
 void guiBeginFrame(MTKView *view);
 void guiEndFrameAndRender(id<MTLCommandBuffer> commandBufer,
                           id<MTLRenderCommandEncoder> renderEncoder);
 
 void doGUI(bool *shouldLoadNewModel);
-bool isGUIHandlingMouseInput();
+bool isGUIHandlingMouseInput(void);
 
-void guiDemo();
+void guiDemo(void);
 
 C_INTERFACE_END

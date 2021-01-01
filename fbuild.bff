@@ -1,76 +1,128 @@
+#if __WINDOWS__
+.VSBinPath_x64 = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Preview\VC\Tools\MSVC\14.28.29617\bin\Hostx64\x64'
+.VSLLVMPath_x64 = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Preview\VC\Tools\Llvm\x64\bin'
+.VSIncludePath = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Preview\VC\Tools\MSVC\14.28.29617\include'
+.VSInstallPath = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Preview'
+.VSLibPath_x64 = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Preview\VC\Tools\MSVC\14.28.29617\lib\x64'
+.WindowsSDKBasePath = 'C:\Program Files (x86)\Windows Kits\10'
+.WindowsSDKIncludePath = 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\um'
+.WindowsSDKLibPath_x64 = 'C:\Program Files (x86)\Windows Kits\10\Lib\10.0.18362.0\um\x64'
+.WindowsSDKSharedIncludePath = 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\shared'
+.WindowsSDKUcrtIncludePath = 'C:\Program Files (x86)\Windows Kits\10\Include\10.0.18362.0\ucrt'
+.WindowsSDKUcrtLibPath_x64 = 'C:\Program Files (x86)\Windows Kits\10\Lib\10.0.18362.0\ucrt\x64'
+#endif
+
 Compiler('Compiler-Clang') {
+#if __WINDOWS__
+    .Executable = '$VSLLVMPath_x64$\clang-cl.exe'
+#endif
+#if __OSX__
     .Executable = '/usr/bin/clang'
+#endif
 }
 
-.clangBaseConfig = [
-    .compiler = 'Compiler-Clang'
-    .linker = '/usr/bin/clang'
-    .compilerOptions = ' -o "%2" "%1" -c -g -O0 -Wall -Wextra -fobjc-arc -fdiagnostics-absolute-paths --target=arm64-apple-macos11 -DDEBUG'
-    .objcCompilerFlags = ' -x objective-c -std=c11'
-    .objcppCompilerFlags = ' -x objective-c++ -std=c++17'
-    .unityFlags = ' -Wno-#pragma-messages'
-    .linkerOptions = ' "%1" -o "%2" -framework AppKit -framework MetalKit -framework Metal --target=arm64-apple-macos11 -lc++'
+.projectBaseConfig = [
+    .projectName = 'playground'
+
+    .inputPath = 'src'
+    .cFilePatterns = {'*.c'}
+    .cppFilePatterns = {'*.cpp'}
 ]
 
-.projectName = 'playground'
+.clangBaseConfig = [
+    Using(.projectBaseConfig)
 
-{
+    .compiler = 'Compiler-Clang'
+#if __WINDOWS__
+    .linker = '$VSLLVMPath_x64$\lld-link.exe'
+#endif
+#if __OSX__
+    .linker = '/usr/bin/clang'
+#endif
+    .compilerOptions = ' -o "%2" "%1" -c -Wall -Wextra -Wno-sign-conversion -Wno-missing-prototypes -Wno-#pragma-messages -Wno-newline-eof -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
+    
+
+    .cCompilerFlags = ' '
+    .cppCompilerFlags = ' '
+]
+
+#if __WINDOWS__
+.clangWindowsConfig = [
     Using(.clangBaseConfig)
-    ObjectList('Obj-$projectName$') {
+    .compilerOptions + ' -Z7 -D_CRT_SECURE_NO_WARNINGS' +
+    ' -I"$VSIncludePath$" -I"$WindowsSDKIncludePath$" -I"$WindowsSDKSharedIncludePath$" -I"$WindowsSDKUcrtIncludePath$"'
+    .cCompilerFlags + ' -TC'
+    .cppCompilerFlags + ' -TP -std:c++17'
+    .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$"'
+    .cUnityOutputPattern = 'UnityC*.c'
+    .cppUnityOutputPattern = 'UnityCpp*.cpp'
+]
+#endif
+
+#if __OSX__
+.clangMacConfig = [
+    Using(.clangBaseConfig)
+    .compilerOptions + ' -g -O0 -fobjc-arc --target=arm64-apple-macos11'
+    .cCompilerFlags + ' -x objective-c -std=c11'
+    .cppCompilerFlags + ' -x objective-c++ -std=c++17'
+    .linkerOptions = ' "%1" -o "%2" -framework AppKit -framework MetalKit -framework Metal --target=arm64-apple-macos11 -lc++'
+
+    .cFilePatterns + {'*.m'}
+    .cppFilePatterns + {'*.mm'}
+    
+    .cUnityOutputPattern = 'UnityC*.m'
+    .cppUnityOutputPattern = 'UnityCpp*.mm'
+]
+#endif
+
+.projectConfigs = {
+#if __WINDOWS__
+    .clangWindowsConfig,
+#endif
+#if __OSX__
+    .clangMacConfig,
+#endif
+}
+
+ForEach(.projectConfig in .projectConfigs) {
+    Using(.projectConfig)
+
+    Unity('Unity-$projectName$-C') {
+        .UnityInputPath = .inputPath
+        .UnityInputPattern = .cFilePatterns
+        .UnityOutputPath = 'tmp'
+        .UnityOutputPattern = .cUnityOutputPattern
+    }
+
+    Unity('Unity-$projectName$-Cpp') {
+        .UnityInputPath = .inputPath
+        .UnityInputPattern = .cppFilePatterns
+        .UnityOutputPath = 'tmp'
+        .UnityOutputPattern = .cppUnityOutputPattern
+    }
+
+    ObjectList('Obj-$projectName$-C') {
         .Compiler = .compiler
-        .CompilerOptions = .objcCompilerFlags + .compilerOptions
-        .CompilerInputPath = 'src'
-        .CompilerInputPattern = {'*.c', '*.m'}
+        .CompilerOptions = .compilerOptions + .cCompilerFlags
+        .CompilerInputUnity = 'Unity-$projectName$-C'
         .CompilerOutputPath = 'tmp'
     }
 
     ObjectList('Obj-$projectName$-Cpp') {
         .Compiler = .compiler
-        .CompilerOptions = .objcppCompilerFlags + .compilerOptions
-        .CompilerInputPath = 'src'
-        .CompilerInputPattern = {'*.cpp', '*.mm'}
+        .CompilerOptions = .compilerOptions + .cppCompilerFlags
+        .CompilerInputUnity = 'Unity-$projectName$-Cpp'
         .CompilerOutputPath = 'tmp'
     }
 
     Executable('Exe-$projectName$') {
         .Linker = .linker
-        .LinkerOutput = 'output/$projectName$_stub'
-        .LinkerOptions = .linkerOptions
-        .Libraries = {'Obj-$projectName$', 'Obj-$projectName$-Cpp'}
-    }
-
-    Unity('Unity-$projectName$') {
-        .UnityInputPath = 'src'
-        .UnityInputPattern = {'*.c', '*.m'}
-        .UnityOutputPath = 'tmp'
-        .UnityOutputPattern = 'UnityC*.m'
-    }
-
-    Unity('Unity-$projectName$-Cpp') {
-        .UnityInputPath = 'src'
-        .UnityInputPattern = {'*.cpp', '*.mm'}
-        .UnityOutputPath = 'tmp'
-        .UnityOutputPattern = 'UnityCpp*.mm'
-    }
-
-    ObjectList('Obj-$projectName$-Unity') {
-        .Compiler = .compiler
-        .CompilerOptions = .objcCompilerFlags + .compilerOptions + .unityFlags
-        .CompilerInputUnity = 'Unity-$projectName$'
-        .CompilerOutputPath = 'tmp'
-    }
-
-    ObjectList('Obj-$projectName$-Unity-Cpp') {
-        .Compiler = .compiler
-        .CompilerOptions = .objcppCompilerFlags + .compilerOptions + .unityFlags
-        .CompilerInputUnity = 'Unity-$projectName$-Cpp'
-        .CompilerOutputPath = 'tmp'
-    }
-
-    Executable('Exe-$projectName$-Unity') {
-        .Linker = .linker
+#if __WINDOWS__
+        .LinkerOutput = 'bin/$projectName$.exe'
+#else
         .LinkerOutput = 'bin/$projectName$'
+#endif
         .LinkerOptions = .linkerOptions
-        .Libraries = {'Obj-$projectName$-Unity', 'Obj-$projectName$-Unity-Cpp'}
+        .Libraries = {'Obj-$projectName$-C', 'Obj-$projectName$-Cpp'}
     }
 }

@@ -27,3 +27,9 @@
 #else
 #define LOG(...)
 #endif
+
+#ifndef MAX
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+#define UNUSED __attribute__((unused))
