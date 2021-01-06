@@ -17,7 +17,6 @@ typedef struct _Vertex {
   Float3 normal;
 } Vertex;
 
-typedef uint32_t VertexIndex;
 #define METAL_INDEX_TYPE MTLIndexTypeUInt32
 #define METAL_CONSTANT_ALIGNMENT 256
 #define NUM_BUFFERS_IN_FLIGHT 3

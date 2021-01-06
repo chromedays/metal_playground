@@ -13,3 +13,8 @@ void appendCStr(String *str, const char *toAppend);
 void appendString(String *str, const String *toAppend);
 void copyStringFromCStr(String *dst, const char *src);
 void copyString(String *dst, const String *src);
+
+void appendPathCStr(String* str, const char* path);
+const char* pathBaseName(const String* str);
+
+bool endsWithCString(const String* str, const char* ch);

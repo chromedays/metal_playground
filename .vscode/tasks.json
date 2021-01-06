@@ -7,6 +7,9 @@
             "label": "build",
             "type": "shell",
             "command": "sh build.sh",
+            "windows": {
+                "command": "./build.ps1"
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true

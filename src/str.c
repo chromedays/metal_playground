@@ -72,3 +72,44 @@ void copyString(String *dst, const String *src) {
   dst->buf[src->len] = 0;
   dst->len = src->len;
 }
+
+static bool isSeparator(char ch) {
+  bool result = ch == '/' || ch == '\\';
+  return result;
+}
+
+void appendPathCStr(String *str, const char *path) {
+  while (*path && isSeparator(*path)) {
+    ++path;
+  }
+
+  if (str->len == 0 || !isSeparator(str->buf[str->len - 1])) {
+    appendCStr(str, "/");
+  }
+
+  appendCStr(str, path);
+}
+
+const char *pathBaseName(const String *str) {
+  int i = str->len - 1;
+  while (isSeparator(str->buf[i]) && i >= 0) {
+    --i;
+  }
+
+  while (!isSeparator(str->buf[i]) && i >= 0) {
+    --i;
+  }
+
+  return i >= 0 ? &str->buf[i + 1] : "";
+}
+
+bool endsWithCString(const String *str, const char *ch) {
+  int chlen = (int)strlen(ch);
+
+  if (str->len < chlen) {
+    return false;
+  }
+
+  bool result = (strncmp(&str->buf[str->len - chlen], ch, chlen) == 0);
+  return result;
+}

@@ -39,8 +39,7 @@ Compiler('Compiler-Clang') {
 #if __OSX__
     .linker = '/usr/bin/clang'
 #endif
-    .compilerOptions = ' -o "%2" "%1" -c -Wall -Wextra -Wno-sign-conversion -Wno-missing-prototypes -Wno-#pragma-messages -Wno-newline-eof -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
-    
+    .compilerOptions = ' -o "%2" "%1" -c -Wall -Wextra -Wno-switch-enum -Wno-double-promotion -Wno-reserved-id-macro -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-missing-prototypes -Wno-#pragma-messages -Wno-newline-eof -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
 
     .cCompilerFlags = ' '
     .cppCompilerFlags = ' '
@@ -49,11 +48,11 @@ Compiler('Compiler-Clang') {
 #if __WINDOWS__
 .clangWindowsConfig = [
     Using(.clangBaseConfig)
-    .compilerOptions + ' -Z7 -Od -D_CRT_SECURE_NO_WARNINGS' +
+    .compilerOptions + ' -Z7 -Od -D_CRT_SECURE_NO_WARNINGS -DRENDERER_GL33' +
     ' -I"$VSIncludePath$" -I"$WindowsSDKIncludePath$" -I"$WindowsSDKSharedIncludePath$" -I"$WindowsSDKUcrtIncludePath$"'
     .cCompilerFlags + ' -TC'
     .cppCompilerFlags + ' -TP -std:c++17'
-    .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -DEBUG -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$"'
+    .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -DEBUG -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$" opengl32.lib gdi32.lib'
 
     .cUnityOutputPattern = 'UnityC*.c'
     .cppUnityOutputPattern = 'UnityCpp*.cpp'
