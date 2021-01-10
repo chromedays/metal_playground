@@ -313,9 +313,15 @@ Mat4 mat4LookAt(const Float3 eye, const Float3 target, const Float3 upAxis) {
 Mat4 mat4Perspective(float fov, float aspectRatio, float nearZ, float farZ) {
   float yScale = 1.f / tanf(fov * 0.5f);
   float xScale = yScale / aspectRatio;
+#ifdef RENDERER_GL33
+  float zRange = 1.f / (farZ - nearZ);
+  float zScale = (farZ + nearZ) * zRange;
+  float wzScale = 2.f * farZ * nearZ * zRange;
+#elif defined(RENDERER_METAL)
   float zRange = farZ - nearZ;
   float zScale = nearZ / zRange;
   float wzScale = farZ * nearZ / zRange;
+#endif
 
   Mat4 persp = {{
       {xScale, 0, 0, 0},
