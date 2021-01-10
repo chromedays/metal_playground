@@ -1,7 +1,7 @@
+#include "gl.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "gl.h"
 
 #ifndef GLAD_IMPL_UTIL_C_
 #define GLAD_IMPL_UTIL_C_
@@ -32,6 +32,7 @@ int GLAD_GL_VERSION_3_0 = 0;
 int GLAD_GL_VERSION_3_1 = 0;
 int GLAD_GL_VERSION_3_2 = 0;
 int GLAD_GL_VERSION_3_3 = 0;
+int GLAD_GL_KHR_debug = 0;
 
 
 static void _pre_call_gl_callback_default(const char *name, GLADapiproc apiproc, int len_args, ...) {
@@ -499,6 +500,30 @@ static void GLAD_API_PTR glad_debug_impl_glCullFace(GLenum mode) {
     
 }
 PFNGLCULLFACEPROC glad_debug_glCullFace = glad_debug_impl_glCullFace;
+PFNGLDEBUGMESSAGECALLBACKPROC glad_glDebugMessageCallback = NULL;
+static void GLAD_API_PTR glad_debug_impl_glDebugMessageCallback(GLDEBUGPROC callback, const void * userParam) {
+    _pre_call_gl_callback("glDebugMessageCallback", (GLADapiproc) glad_glDebugMessageCallback, 2, callback, userParam);
+    glad_glDebugMessageCallback(callback, userParam);
+    _post_call_gl_callback(NULL, "glDebugMessageCallback", (GLADapiproc) glad_glDebugMessageCallback, 2, callback, userParam);
+    
+}
+PFNGLDEBUGMESSAGECALLBACKPROC glad_debug_glDebugMessageCallback = glad_debug_impl_glDebugMessageCallback;
+PFNGLDEBUGMESSAGECONTROLPROC glad_glDebugMessageControl = NULL;
+static void GLAD_API_PTR glad_debug_impl_glDebugMessageControl(GLenum source, GLenum type, GLenum severity, GLsizei count, const GLuint * ids, GLboolean enabled) {
+    _pre_call_gl_callback("glDebugMessageControl", (GLADapiproc) glad_glDebugMessageControl, 6, source, type, severity, count, ids, enabled);
+    glad_glDebugMessageControl(source, type, severity, count, ids, enabled);
+    _post_call_gl_callback(NULL, "glDebugMessageControl", (GLADapiproc) glad_glDebugMessageControl, 6, source, type, severity, count, ids, enabled);
+    
+}
+PFNGLDEBUGMESSAGECONTROLPROC glad_debug_glDebugMessageControl = glad_debug_impl_glDebugMessageControl;
+PFNGLDEBUGMESSAGEINSERTPROC glad_glDebugMessageInsert = NULL;
+static void GLAD_API_PTR glad_debug_impl_glDebugMessageInsert(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar * buf) {
+    _pre_call_gl_callback("glDebugMessageInsert", (GLADapiproc) glad_glDebugMessageInsert, 6, source, type, id, severity, length, buf);
+    glad_glDebugMessageInsert(source, type, id, severity, length, buf);
+    _post_call_gl_callback(NULL, "glDebugMessageInsert", (GLADapiproc) glad_glDebugMessageInsert, 6, source, type, id, severity, length, buf);
+    
+}
+PFNGLDEBUGMESSAGEINSERTPROC glad_debug_glDebugMessageInsert = glad_debug_impl_glDebugMessageInsert;
 PFNGLDELETEBUFFERSPROC glad_glDeleteBuffers = NULL;
 static void GLAD_API_PTR glad_debug_impl_glDeleteBuffers(GLsizei n, const GLuint * buffers) {
     _pre_call_gl_callback("glDeleteBuffers", (GLADapiproc) glad_glDeleteBuffers, 2, n, buffers);
@@ -1037,6 +1062,15 @@ static void GLAD_API_PTR glad_debug_impl_glGetCompressedTexImage(GLenum target, 
     
 }
 PFNGLGETCOMPRESSEDTEXIMAGEPROC glad_debug_glGetCompressedTexImage = glad_debug_impl_glGetCompressedTexImage;
+PFNGLGETDEBUGMESSAGELOGPROC glad_glGetDebugMessageLog = NULL;
+static GLuint GLAD_API_PTR glad_debug_impl_glGetDebugMessageLog(GLuint count, GLsizei bufSize, GLenum * sources, GLenum * types, GLuint * ids, GLenum * severities, GLsizei * lengths, GLchar * messageLog) {
+    GLuint ret;
+    _pre_call_gl_callback("glGetDebugMessageLog", (GLADapiproc) glad_glGetDebugMessageLog, 8, count, bufSize, sources, types, ids, severities, lengths, messageLog);
+    ret = glad_glGetDebugMessageLog(count, bufSize, sources, types, ids, severities, lengths, messageLog);
+    _post_call_gl_callback((void*) &ret, "glGetDebugMessageLog", (GLADapiproc) glad_glGetDebugMessageLog, 8, count, bufSize, sources, types, ids, severities, lengths, messageLog);
+    return ret;
+}
+PFNGLGETDEBUGMESSAGELOGPROC glad_debug_glGetDebugMessageLog = glad_debug_impl_glGetDebugMessageLog;
 PFNGLGETDOUBLEVPROC glad_glGetDoublev = NULL;
 static void GLAD_API_PTR glad_debug_impl_glGetDoublev(GLenum pname, GLdouble * data) {
     _pre_call_gl_callback("glGetDoublev", (GLADapiproc) glad_glGetDoublev, 2, pname, data);
@@ -1128,6 +1162,30 @@ static void GLAD_API_PTR glad_debug_impl_glGetMultisamplefv(GLenum pname, GLuint
     
 }
 PFNGLGETMULTISAMPLEFVPROC glad_debug_glGetMultisamplefv = glad_debug_impl_glGetMultisamplefv;
+PFNGLGETOBJECTLABELPROC glad_glGetObjectLabel = NULL;
+static void GLAD_API_PTR glad_debug_impl_glGetObjectLabel(GLenum identifier, GLuint name, GLsizei bufSize, GLsizei * length, GLchar * label) {
+    _pre_call_gl_callback("glGetObjectLabel", (GLADapiproc) glad_glGetObjectLabel, 5, identifier, name, bufSize, length, label);
+    glad_glGetObjectLabel(identifier, name, bufSize, length, label);
+    _post_call_gl_callback(NULL, "glGetObjectLabel", (GLADapiproc) glad_glGetObjectLabel, 5, identifier, name, bufSize, length, label);
+    
+}
+PFNGLGETOBJECTLABELPROC glad_debug_glGetObjectLabel = glad_debug_impl_glGetObjectLabel;
+PFNGLGETOBJECTPTRLABELPROC glad_glGetObjectPtrLabel = NULL;
+static void GLAD_API_PTR glad_debug_impl_glGetObjectPtrLabel(const void * ptr, GLsizei bufSize, GLsizei * length, GLchar * label) {
+    _pre_call_gl_callback("glGetObjectPtrLabel", (GLADapiproc) glad_glGetObjectPtrLabel, 4, ptr, bufSize, length, label);
+    glad_glGetObjectPtrLabel(ptr, bufSize, length, label);
+    _post_call_gl_callback(NULL, "glGetObjectPtrLabel", (GLADapiproc) glad_glGetObjectPtrLabel, 4, ptr, bufSize, length, label);
+    
+}
+PFNGLGETOBJECTPTRLABELPROC glad_debug_glGetObjectPtrLabel = glad_debug_impl_glGetObjectPtrLabel;
+PFNGLGETPOINTERVPROC glad_glGetPointerv = NULL;
+static void GLAD_API_PTR glad_debug_impl_glGetPointerv(GLenum pname, void ** params) {
+    _pre_call_gl_callback("glGetPointerv", (GLADapiproc) glad_glGetPointerv, 2, pname, params);
+    glad_glGetPointerv(pname, params);
+    _post_call_gl_callback(NULL, "glGetPointerv", (GLADapiproc) glad_glGetPointerv, 2, pname, params);
+    
+}
+PFNGLGETPOINTERVPROC glad_debug_glGetPointerv = glad_debug_impl_glGetPointerv;
 PFNGLGETPROGRAMINFOLOGPROC glad_glGetProgramInfoLog = NULL;
 static void GLAD_API_PTR glad_debug_impl_glGetProgramInfoLog(GLuint program, GLsizei bufSize, GLsizei * length, GLchar * infoLog) {
     _pre_call_gl_callback("glGetProgramInfoLog", (GLADapiproc) glad_glGetProgramInfoLog, 4, program, bufSize, length, infoLog);
@@ -1618,6 +1676,22 @@ static void GLAD_API_PTR glad_debug_impl_glMultiDrawElementsBaseVertex(GLenum mo
     
 }
 PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC glad_debug_glMultiDrawElementsBaseVertex = glad_debug_impl_glMultiDrawElementsBaseVertex;
+PFNGLOBJECTLABELPROC glad_glObjectLabel = NULL;
+static void GLAD_API_PTR glad_debug_impl_glObjectLabel(GLenum identifier, GLuint name, GLsizei length, const GLchar * label) {
+    _pre_call_gl_callback("glObjectLabel", (GLADapiproc) glad_glObjectLabel, 4, identifier, name, length, label);
+    glad_glObjectLabel(identifier, name, length, label);
+    _post_call_gl_callback(NULL, "glObjectLabel", (GLADapiproc) glad_glObjectLabel, 4, identifier, name, length, label);
+    
+}
+PFNGLOBJECTLABELPROC glad_debug_glObjectLabel = glad_debug_impl_glObjectLabel;
+PFNGLOBJECTPTRLABELPROC glad_glObjectPtrLabel = NULL;
+static void GLAD_API_PTR glad_debug_impl_glObjectPtrLabel(const void * ptr, GLsizei length, const GLchar * label) {
+    _pre_call_gl_callback("glObjectPtrLabel", (GLADapiproc) glad_glObjectPtrLabel, 3, ptr, length, label);
+    glad_glObjectPtrLabel(ptr, length, label);
+    _post_call_gl_callback(NULL, "glObjectPtrLabel", (GLADapiproc) glad_glObjectPtrLabel, 3, ptr, length, label);
+    
+}
+PFNGLOBJECTPTRLABELPROC glad_debug_glObjectPtrLabel = glad_debug_impl_glObjectPtrLabel;
 PFNGLPIXELSTOREFPROC glad_glPixelStoref = NULL;
 static void GLAD_API_PTR glad_debug_impl_glPixelStoref(GLenum pname, GLfloat param) {
     _pre_call_gl_callback("glPixelStoref", (GLADapiproc) glad_glPixelStoref, 2, pname, param);
@@ -1690,6 +1764,14 @@ static void GLAD_API_PTR glad_debug_impl_glPolygonOffset(GLfloat factor, GLfloat
     
 }
 PFNGLPOLYGONOFFSETPROC glad_debug_glPolygonOffset = glad_debug_impl_glPolygonOffset;
+PFNGLPOPDEBUGGROUPPROC glad_glPopDebugGroup = NULL;
+static void GLAD_API_PTR glad_debug_impl_glPopDebugGroup(void) {
+    _pre_call_gl_callback("glPopDebugGroup", (GLADapiproc) glad_glPopDebugGroup, 0);
+    glad_glPopDebugGroup();
+    _post_call_gl_callback(NULL, "glPopDebugGroup", (GLADapiproc) glad_glPopDebugGroup, 0);
+    
+}
+PFNGLPOPDEBUGGROUPPROC glad_debug_glPopDebugGroup = glad_debug_impl_glPopDebugGroup;
 PFNGLPRIMITIVERESTARTINDEXPROC glad_glPrimitiveRestartIndex = NULL;
 static void GLAD_API_PTR glad_debug_impl_glPrimitiveRestartIndex(GLuint index) {
     _pre_call_gl_callback("glPrimitiveRestartIndex", (GLADapiproc) glad_glPrimitiveRestartIndex, 1, index);
@@ -1706,6 +1788,14 @@ static void GLAD_API_PTR glad_debug_impl_glProvokingVertex(GLenum mode) {
     
 }
 PFNGLPROVOKINGVERTEXPROC glad_debug_glProvokingVertex = glad_debug_impl_glProvokingVertex;
+PFNGLPUSHDEBUGGROUPPROC glad_glPushDebugGroup = NULL;
+static void GLAD_API_PTR glad_debug_impl_glPushDebugGroup(GLenum source, GLuint id, GLsizei length, const GLchar * message) {
+    _pre_call_gl_callback("glPushDebugGroup", (GLADapiproc) glad_glPushDebugGroup, 4, source, id, length, message);
+    glad_glPushDebugGroup(source, id, length, message);
+    _post_call_gl_callback(NULL, "glPushDebugGroup", (GLADapiproc) glad_glPushDebugGroup, 4, source, id, length, message);
+    
+}
+PFNGLPUSHDEBUGGROUPPROC glad_debug_glPushDebugGroup = glad_debug_impl_glPushDebugGroup;
 PFNGLQUERYCOUNTERPROC glad_glQueryCounter = NULL;
 static void GLAD_API_PTR glad_debug_impl_glQueryCounter(GLuint id, GLenum target) {
     _pre_call_gl_callback("glQueryCounter", (GLADapiproc) glad_glQueryCounter, 2, id, target);
@@ -2915,6 +3005,7 @@ static void glad_gl_load_GL_VERSION_1_1( GLADuserptrloadfunc load, void* userptr
     glad_glDrawArrays = (PFNGLDRAWARRAYSPROC) load(userptr, "glDrawArrays");
     glad_glDrawElements = (PFNGLDRAWELEMENTSPROC) load(userptr, "glDrawElements");
     glad_glGenTextures = (PFNGLGENTEXTURESPROC) load(userptr, "glGenTextures");
+    glad_glGetPointerv = (PFNGLGETPOINTERVPROC) load(userptr, "glGetPointerv");
     glad_glIsTexture = (PFNGLISTEXTUREPROC) load(userptr, "glIsTexture");
     glad_glPolygonOffset = (PFNGLPOLYGONOFFSETPROC) load(userptr, "glPolygonOffset");
     glad_glTexSubImage1D = (PFNGLTEXSUBIMAGE1DPROC) load(userptr, "glTexSubImage1D");
@@ -3236,6 +3327,20 @@ static void glad_gl_load_GL_VERSION_3_3( GLADuserptrloadfunc load, void* userptr
     glad_glVertexAttribP4ui = (PFNGLVERTEXATTRIBP4UIPROC) load(userptr, "glVertexAttribP4ui");
     glad_glVertexAttribP4uiv = (PFNGLVERTEXATTRIBP4UIVPROC) load(userptr, "glVertexAttribP4uiv");
 }
+static void glad_gl_load_GL_KHR_debug( GLADuserptrloadfunc load, void* userptr) {
+    if(!GLAD_GL_KHR_debug) return;
+    glad_glDebugMessageCallback = (PFNGLDEBUGMESSAGECALLBACKPROC) load(userptr, "glDebugMessageCallback");
+    glad_glDebugMessageControl = (PFNGLDEBUGMESSAGECONTROLPROC) load(userptr, "glDebugMessageControl");
+    glad_glDebugMessageInsert = (PFNGLDEBUGMESSAGEINSERTPROC) load(userptr, "glDebugMessageInsert");
+    glad_glGetDebugMessageLog = (PFNGLGETDEBUGMESSAGELOGPROC) load(userptr, "glGetDebugMessageLog");
+    glad_glGetObjectLabel = (PFNGLGETOBJECTLABELPROC) load(userptr, "glGetObjectLabel");
+    glad_glGetObjectPtrLabel = (PFNGLGETOBJECTPTRLABELPROC) load(userptr, "glGetObjectPtrLabel");
+    glad_glGetPointerv = (PFNGLGETPOINTERVPROC) load(userptr, "glGetPointerv");
+    glad_glObjectLabel = (PFNGLOBJECTLABELPROC) load(userptr, "glObjectLabel");
+    glad_glObjectPtrLabel = (PFNGLOBJECTPTRLABELPROC) load(userptr, "glObjectPtrLabel");
+    glad_glPopDebugGroup = (PFNGLPOPDEBUGGROUPPROC) load(userptr, "glPopDebugGroup");
+    glad_glPushDebugGroup = (PFNGLPUSHDEBUGGROUPPROC) load(userptr, "glPushDebugGroup");
+}
 
 
 
@@ -3343,7 +3448,7 @@ static int glad_gl_find_extensions_gl( int version) {
     char **exts_i = NULL;
     if (!glad_gl_get_extensions(version, &exts, &num_exts_i, &exts_i)) return 0;
 
-    (void) glad_gl_has_extension;
+    GLAD_GL_KHR_debug = glad_gl_has_extension(version, exts, num_exts_i, exts_i, "GL_KHR_debug");
 
     glad_gl_free_extensions(exts_i, num_exts_i);
 
@@ -3409,6 +3514,7 @@ int gladLoadGLUserPtr( GLADuserptrloadfunc load, void *userptr) {
     glad_gl_load_GL_VERSION_3_3(load, userptr);
 
     if (!glad_gl_find_extensions_gl(version)) return 0;
+    glad_gl_load_GL_KHR_debug(load, userptr);
 
 
 
@@ -3477,6 +3583,9 @@ void gladInstallGLDebug() {
     glad_debug_glCreateProgram = glad_debug_impl_glCreateProgram;
     glad_debug_glCreateShader = glad_debug_impl_glCreateShader;
     glad_debug_glCullFace = glad_debug_impl_glCullFace;
+    glad_debug_glDebugMessageCallback = glad_debug_impl_glDebugMessageCallback;
+    glad_debug_glDebugMessageControl = glad_debug_impl_glDebugMessageControl;
+    glad_debug_glDebugMessageInsert = glad_debug_impl_glDebugMessageInsert;
     glad_debug_glDeleteBuffers = glad_debug_impl_glDeleteBuffers;
     glad_debug_glDeleteFramebuffers = glad_debug_impl_glDeleteFramebuffers;
     glad_debug_glDeleteProgram = glad_debug_impl_glDeleteProgram;
@@ -3544,6 +3653,7 @@ void gladInstallGLDebug() {
     glad_debug_glGetBufferPointerv = glad_debug_impl_glGetBufferPointerv;
     glad_debug_glGetBufferSubData = glad_debug_impl_glGetBufferSubData;
     glad_debug_glGetCompressedTexImage = glad_debug_impl_glGetCompressedTexImage;
+    glad_debug_glGetDebugMessageLog = glad_debug_impl_glGetDebugMessageLog;
     glad_debug_glGetDoublev = glad_debug_impl_glGetDoublev;
     glad_debug_glGetError = glad_debug_impl_glGetError;
     glad_debug_glGetFloatv = glad_debug_impl_glGetFloatv;
@@ -3555,6 +3665,9 @@ void gladInstallGLDebug() {
     glad_debug_glGetIntegeri_v = glad_debug_impl_glGetIntegeri_v;
     glad_debug_glGetIntegerv = glad_debug_impl_glGetIntegerv;
     glad_debug_glGetMultisamplefv = glad_debug_impl_glGetMultisamplefv;
+    glad_debug_glGetObjectLabel = glad_debug_impl_glGetObjectLabel;
+    glad_debug_glGetObjectPtrLabel = glad_debug_impl_glGetObjectPtrLabel;
+    glad_debug_glGetPointerv = glad_debug_impl_glGetPointerv;
     glad_debug_glGetProgramInfoLog = glad_debug_impl_glGetProgramInfoLog;
     glad_debug_glGetProgramiv = glad_debug_impl_glGetProgramiv;
     glad_debug_glGetQueryObjecti64v = glad_debug_impl_glGetQueryObjecti64v;
@@ -3614,6 +3727,8 @@ void gladInstallGLDebug() {
     glad_debug_glMultiDrawArrays = glad_debug_impl_glMultiDrawArrays;
     glad_debug_glMultiDrawElements = glad_debug_impl_glMultiDrawElements;
     glad_debug_glMultiDrawElementsBaseVertex = glad_debug_impl_glMultiDrawElementsBaseVertex;
+    glad_debug_glObjectLabel = glad_debug_impl_glObjectLabel;
+    glad_debug_glObjectPtrLabel = glad_debug_impl_glObjectPtrLabel;
     glad_debug_glPixelStoref = glad_debug_impl_glPixelStoref;
     glad_debug_glPixelStorei = glad_debug_impl_glPixelStorei;
     glad_debug_glPointParameterf = glad_debug_impl_glPointParameterf;
@@ -3623,8 +3738,10 @@ void gladInstallGLDebug() {
     glad_debug_glPointSize = glad_debug_impl_glPointSize;
     glad_debug_glPolygonMode = glad_debug_impl_glPolygonMode;
     glad_debug_glPolygonOffset = glad_debug_impl_glPolygonOffset;
+    glad_debug_glPopDebugGroup = glad_debug_impl_glPopDebugGroup;
     glad_debug_glPrimitiveRestartIndex = glad_debug_impl_glPrimitiveRestartIndex;
     glad_debug_glProvokingVertex = glad_debug_impl_glProvokingVertex;
+    glad_debug_glPushDebugGroup = glad_debug_impl_glPushDebugGroup;
     glad_debug_glQueryCounter = glad_debug_impl_glQueryCounter;
     glad_debug_glReadBuffer = glad_debug_impl_glReadBuffer;
     glad_debug_glReadPixels = glad_debug_impl_glReadPixels;
@@ -3824,6 +3941,9 @@ void gladUninstallGLDebug() {
     glad_debug_glCreateProgram = glad_glCreateProgram;
     glad_debug_glCreateShader = glad_glCreateShader;
     glad_debug_glCullFace = glad_glCullFace;
+    glad_debug_glDebugMessageCallback = glad_glDebugMessageCallback;
+    glad_debug_glDebugMessageControl = glad_glDebugMessageControl;
+    glad_debug_glDebugMessageInsert = glad_glDebugMessageInsert;
     glad_debug_glDeleteBuffers = glad_glDeleteBuffers;
     glad_debug_glDeleteFramebuffers = glad_glDeleteFramebuffers;
     glad_debug_glDeleteProgram = glad_glDeleteProgram;
@@ -3891,6 +4011,7 @@ void gladUninstallGLDebug() {
     glad_debug_glGetBufferPointerv = glad_glGetBufferPointerv;
     glad_debug_glGetBufferSubData = glad_glGetBufferSubData;
     glad_debug_glGetCompressedTexImage = glad_glGetCompressedTexImage;
+    glad_debug_glGetDebugMessageLog = glad_glGetDebugMessageLog;
     glad_debug_glGetDoublev = glad_glGetDoublev;
     glad_debug_glGetError = glad_glGetError;
     glad_debug_glGetFloatv = glad_glGetFloatv;
@@ -3902,6 +4023,9 @@ void gladUninstallGLDebug() {
     glad_debug_glGetIntegeri_v = glad_glGetIntegeri_v;
     glad_debug_glGetIntegerv = glad_glGetIntegerv;
     glad_debug_glGetMultisamplefv = glad_glGetMultisamplefv;
+    glad_debug_glGetObjectLabel = glad_glGetObjectLabel;
+    glad_debug_glGetObjectPtrLabel = glad_glGetObjectPtrLabel;
+    glad_debug_glGetPointerv = glad_glGetPointerv;
     glad_debug_glGetProgramInfoLog = glad_glGetProgramInfoLog;
     glad_debug_glGetProgramiv = glad_glGetProgramiv;
     glad_debug_glGetQueryObjecti64v = glad_glGetQueryObjecti64v;
@@ -3961,6 +4085,8 @@ void gladUninstallGLDebug() {
     glad_debug_glMultiDrawArrays = glad_glMultiDrawArrays;
     glad_debug_glMultiDrawElements = glad_glMultiDrawElements;
     glad_debug_glMultiDrawElementsBaseVertex = glad_glMultiDrawElementsBaseVertex;
+    glad_debug_glObjectLabel = glad_glObjectLabel;
+    glad_debug_glObjectPtrLabel = glad_glObjectPtrLabel;
     glad_debug_glPixelStoref = glad_glPixelStoref;
     glad_debug_glPixelStorei = glad_glPixelStorei;
     glad_debug_glPointParameterf = glad_glPointParameterf;
@@ -3970,8 +4096,10 @@ void gladUninstallGLDebug() {
     glad_debug_glPointSize = glad_glPointSize;
     glad_debug_glPolygonMode = glad_glPolygonMode;
     glad_debug_glPolygonOffset = glad_glPolygonOffset;
+    glad_debug_glPopDebugGroup = glad_glPopDebugGroup;
     glad_debug_glPrimitiveRestartIndex = glad_glPrimitiveRestartIndex;
     glad_debug_glProvokingVertex = glad_glProvokingVertex;
+    glad_debug_glPushDebugGroup = glad_glPushDebugGroup;
     glad_debug_glQueryCounter = glad_glQueryCounter;
     glad_debug_glReadBuffer = glad_glReadBuffer;
     glad_debug_glReadPixels = glad_glReadPixels;

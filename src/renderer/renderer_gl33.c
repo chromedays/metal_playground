@@ -2,8 +2,6 @@
 #include "../memory.h"
 #include "../app.h"
 #include "../external/glad/gl.h"
-#include <fileapi.h>
-#include <handleapi.h>
 #include <stdint.h>
 #define CGLTF_IMPLEMENTATION
 #include "../external/cgltf.h"
@@ -18,9 +16,6 @@ typedef struct _Renderer {
   uint32_t vao;
   struct {
     uint32_t program;
-    uint32_t viewUniformIndex;
-    uint32_t materialUniformIndex;
-    uint32_t drawUniformIndex;
   } phong;
 
   uint32_t viewUniformBuffer;
@@ -36,29 +31,43 @@ static Renderer gRenderer;
 static uint32_t createShaderProgram(const char *vertexShaderFilePath,
                                     const char *fragmentShaderFilePath);
 
+static void setUniformBinding(uint32_t program, const char *name,
+                              uint32_t binding) {
+  uint32_t uniformIndex = glGetUniformBlockIndex(program, name);
+  if (uniformIndex != (uint32_t)(-1)) {
+    glUniformBlockBinding(program, uniformIndex, binding);
+  }
+}
+
+static void GLAPIENTRY openglDebugCallback(UNUSED uint32_t source,
+                                           uint32_t type, UNUSED uint32_t id,
+                                           uint32_t severity,
+                                           UNUSED int32_t length,
+                                           const char *message,
+                                           UNUSED const void *userdata) {
+
+  LOG("GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s",
+      (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity,
+      message);
+}
+
 void initRenderer(void) {
+  if (GLAD_GL_KHR_debug) {
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(openglDebugCallback, NULL);
+  }
+
   glGenVertexArrays(1, &gRenderer.vao);
   glBindVertexArray(gRenderer.vao);
 
   gRenderer.phong.program =
       createShaderProgram("phong_vert.glsl", "phong_frag.glsl");
-  gRenderer.phong.viewUniformIndex =
-      glGetUniformBlockIndex(gRenderer.phong.program, "type_ViewData");
-  gRenderer.phong.materialUniformIndex =
-      glGetUniformBlockIndex(gRenderer.phong.program, "type_MaterialData");
-  gRenderer.phong.drawUniformIndex =
-      glGetUniformBlockIndex(gRenderer.phong.program, "type_DrawData");
-  ASSERT(gRenderer.phong.viewUniformIndex != GL_INVALID_INDEX &&
-         gRenderer.phong.materialUniformIndex != GL_INVALID_INDEX &&
-         gRenderer.phong.drawUniformIndex != GL_INVALID_INDEX);
-  glUniformBlockBinding(gRenderer.phong.program,
-                        gRenderer.phong.viewUniformIndex, VIEW_BINDING);
-  glUniformBlockBinding(gRenderer.phong.program,
-                        gRenderer.phong.materialUniformIndex, MATERIAL_BINDING);
-  glUniformBlockBinding(gRenderer.phong.program,
-                        gRenderer.phong.drawUniformIndex, DRAW_BINDING);
+  setUniformBinding(gRenderer.phong.program, "type_ViewData", VIEW_BINDING);
+  setUniformBinding(gRenderer.phong.program, "type_MaterialData",
+                    MATERIAL_BINDING);
+  setUniformBinding(gRenderer.phong.program, "type_DrawData", DRAW_BINDING);
 
-  gRenderer.cam.distance = 5;
+  gRenderer.cam.distance = 30;
   gRenderer.cam.phi = -90;
   gRenderer.cam.theta = 0;
 

@@ -10,8 +10,10 @@ struct VertexIn {
 struct VertexOut {
   float4 position : SV_POSITION;
   float4 color : COLOR;
-  float2 texcoord : TEXCOORD;
+  float2 texcoord : TEXCOORD0;
   float3 normal : NORMAL;
+
+  float4 positionWorld : TEXCOORD1;
 };
 
 cbuffer ViewData : register(b0) {
@@ -35,10 +37,12 @@ VertexOut phong_vert(VertexIn input) {
   output.position = mul(float4(input.position.xyz, 1), mvp);
   output.color = input.color;
   output.texcoord = input.texcoord;
-  float3x3 normalMat33 = (float3x3)modelMat;
-  output.normal = mul(input.normal, normalMat33);
+  // float3x3 normalMat33 = (float3x3)normalMat;
+  // output.normal = mul(input.normal, normalMat33);
+  output.normal = input.normal;
+  output.positionWorld = mul(float4(input.position.xyz, 1), modelMat);
 
   return output;
 }
 
-float4 phong_frag(VertexOut input) : SV_Target { return baseColorFactor * float4(input.normal, 1); }
+float4 phong_frag(VertexOut input) : SV_Target { return float4((input.positionWorld.xyz + float3(1, 1, 1)) * 0.5, 1); }

@@ -17,8 +17,9 @@ static float4 in_var_COLOR;
 static float2 in_var_TEXCOORD;
 static float3 in_var_NORMAL;
 static float4 out_var_COLOR;
-static float2 out_var_TEXCOORD;
+static float2 out_var_TEXCOORD0;
 static float3 out_var_NORMAL;
+static float4 out_var_TEXCOORD1;
 
 struct SPIRV_Cross_Input
 {
@@ -31,17 +32,20 @@ struct SPIRV_Cross_Input
 struct SPIRV_Cross_Output
 {
     float4 out_var_COLOR : TEXCOORD0;
-    float2 out_var_TEXCOORD : TEXCOORD1;
+    float2 out_var_TEXCOORD0 : TEXCOORD1;
     float3 out_var_NORMAL : TEXCOORD2;
+    float4 out_var_TEXCOORD1 : TEXCOORD3;
     float4 gl_Position : SV_Position;
 };
 
 void vert_main()
 {
-    gl_Position = mul(float4(in_var_POSITION, 1.0f), mul(DrawData_modelMat, mul(ViewData_viewMat, ViewData_projMat)));
+    float4 _51 = float4(in_var_POSITION, 1.0f);
+    gl_Position = mul(_51, mul(DrawData_modelMat, mul(ViewData_viewMat, ViewData_projMat)));
     out_var_COLOR = in_var_COLOR;
-    out_var_TEXCOORD = in_var_TEXCOORD;
-    out_var_NORMAL = mul(in_var_NORMAL, float3x3(DrawData_modelMat[0].xyz, DrawData_modelMat[1].xyz, DrawData_modelMat[2].xyz));
+    out_var_TEXCOORD0 = in_var_TEXCOORD;
+    out_var_NORMAL = in_var_NORMAL;
+    out_var_TEXCOORD1 = mul(_51, DrawData_modelMat);
 }
 
 SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)
@@ -54,7 +58,8 @@ SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)
     SPIRV_Cross_Output stage_output;
     stage_output.gl_Position = gl_Position;
     stage_output.out_var_COLOR = out_var_COLOR;
-    stage_output.out_var_TEXCOORD = out_var_TEXCOORD;
+    stage_output.out_var_TEXCOORD0 = out_var_TEXCOORD0;
     stage_output.out_var_NORMAL = out_var_NORMAL;
+    stage_output.out_var_TEXCOORD1 = out_var_TEXCOORD1;
     return stage_output;
 }
