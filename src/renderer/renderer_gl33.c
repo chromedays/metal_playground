@@ -54,6 +54,7 @@ static void GLAPIENTRY openglDebugCallback(UNUSED uint32_t source,
 void initRenderer(void) {
   if (GLAD_GL_KHR_debug) {
     glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(openglDebugCallback, NULL);
   }
 
@@ -67,7 +68,7 @@ void initRenderer(void) {
                     MATERIAL_BINDING);
   setUniformBinding(gRenderer.phong.program, "type_DrawData", DRAW_BINDING);
 
-  gRenderer.cam.distance = 30;
+  gRenderer.cam.distance = 10;
   gRenderer.cam.phi = -90;
   gRenderer.cam.theta = 0;
 
@@ -101,7 +102,8 @@ void initRenderer(void) {
   glBufferData(GL_UNIFORM_BUFFER, sizeof(tempDrawUniforms), &tempDrawUniforms,
                GL_DYNAMIC_DRAW);
 
-  String gltfPath = createResourcePath(ResourceType_Common, "gltf/Sponza.glb");
+  String gltfPath =
+      createResourcePath(ResourceType_Common, "gltf/AnimatedCube");
   loadGLTFModel(&gRenderer.tempModel, &gltfPath);
   destroyString(&gltfPath);
 }
@@ -504,16 +506,16 @@ void renderModel(Model *model) {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->gpuIndexBuffer);
 
   glEnableVertexAttribArray(0);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+  glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                         (void *)offsetof(Vertex, position));
   glEnableVertexAttribArray(1);
   glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                         (void *)offsetof(Vertex, color));
   glEnableVertexAttribArray(2);
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+  glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                         (void *)offsetof(Vertex, texcoord));
   glEnableVertexAttribArray(3);
-  glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex),
+  glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
                         (void *)offsetof(Vertex, normal));
 
   glBindBufferRange(GL_UNIFORM_BUFFER, VIEW_BINDING,
