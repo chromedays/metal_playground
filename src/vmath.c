@@ -317,7 +317,7 @@ Mat4 mat4Perspective(float fov, float aspectRatio, float nearZ, float farZ) {
   float zRange = 1.f / (farZ - nearZ);
   float zScale = (farZ + nearZ) * zRange;
   float wzScale = 2.f * farZ * nearZ * zRange;
-#elif defined(RENDERER_METAL)
+#elif defined(RENDERER_METAL) || defined(RENDERER_DX11)
   float zRange = farZ - nearZ;
   float zScale = nearZ / zRange;
   float wzScale = farZ * nearZ / zRange;

@@ -6,14 +6,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <Windows.h>
 #include <ShellScalingApi.h>
-#ifndef COBJMACROS
-#define COBJMACROS
-#endif
-#include <d3d11_1.h>
-#include <dxgidebug.h>
-#include <d3dcompiler.h>
 #include <crtdbg.h>
 
 static App gApp;
@@ -28,6 +21,7 @@ static struct Win32Internal {
     .className = "CANT THIS JUST BE A RANDOM STRING",
 };
 
+#ifdef RENDERER_GL33
 static GLADapiproc loadGLProc(const char *name) {
   static HMODULE openglLibrary;
   if (!openglLibrary) {
@@ -112,6 +106,7 @@ static void initGL(HWND window) {
   wglMakeCurrent(dc, rc);
   gladLoadGL(loadGLProc);
 }
+#endif
 
 int runMain(UNUSED int argc, UNUSED char **argv, const char *title, int width,
             int height, OnInit init, OnUpdate update, OnCleanup cleanup) {
@@ -152,6 +147,8 @@ int runMain(UNUSED int argc, UNUSED char **argv, const char *title, int width,
       windowRect.bottom - windowRect.top, NULL, NULL, wc.hInstance, NULL);
   ASSERT(window);
 
+  gApp.win32.window = window;
+
 #ifdef RENDERER_GL33
   initGL(window);
 #endif
@@ -169,7 +166,9 @@ int runMain(UNUSED int argc, UNUSED char **argv, const char *title, int width,
   float targetTimeStep = 1 / 60.f;
   MSG msg = {0};
 
+#ifdef RENDERER_GL33
   HDC dc = GetDC(window);
+#endif
 
   while (msg.message != WM_QUIT) {
 

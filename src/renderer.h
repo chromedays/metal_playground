@@ -3,6 +3,12 @@
 #include "vmath.h"
 #include "str.h"
 #include <stdint.h>
+#ifdef RENDERER_DX11
+#ifndef COBJMACROS
+#define COBJMACROS
+#endif
+#include <d3d11_1.h>
+#endif
 
 void initRenderer(void);
 void destroyRenderer(void);
@@ -117,6 +123,8 @@ typedef struct _Model {
   uint32_t *textures;
 #elif defined(RENDERER_METAL)
   id<MTLTexture> __strong *textures;
+#elif defined(RENDERER_DX11)
+  ID3D11Texture2D **textures;
 #endif
 
   int numSamplers;
@@ -124,6 +132,8 @@ typedef struct _Model {
   uint32_t *samplers;
 #elif defined(RENDERER_METAL)
   id<MTLSamplerState> __strong *samplers;
+#elif defined(RENDERER_DX11)
+  ID3D11SamplerState **samplers;
 #endif
 
   int numMaterials;
@@ -144,6 +154,9 @@ typedef struct _Model {
 #elif defined(RENDERER_METAL)
   id<MTLBuffer> gpuVertexBuffer;
   id<MTLBuffer> gpuIndexBuffer;
+#elif defined(RENDERER_DX11)
+  ID3D11Buffer *gpuVertexBuffer;
+  ID3D11Buffer *gpuIndexBuffer;
 #endif
 } Model;
 

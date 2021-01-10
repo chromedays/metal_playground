@@ -48,17 +48,31 @@ Compiler('Compiler-Clang') {
 #if __WINDOWS__
 .clangWindowsConfig = [
     Using(.clangBaseConfig)
-    .compilerOptions + ' -Z7 -Od -D_CRT_SECURE_NO_WARNINGS -DRENDERER_GL33' +
+    .compilerOptions + ' -Z7 -Od -D_CRT_SECURE_NO_WARNINGS' +
     ' -I"$VSIncludePath$" -I"$WindowsSDKIncludePath$" -I"$WindowsSDKSharedIncludePath$" -I"$WindowsSDKUcrtIncludePath$"'
     .cCompilerFlags + ' -TC'
     .cppCompilerFlags + ' -TP -std:c++17'
-    .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -DEBUG -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$" opengl32.lib gdi32.lib'
-
-    .cUnityOutputPattern = 'UnityC*.c'
-    .cppUnityOutputPattern = 'UnityCpp*.cpp'
+    .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -DEBUG -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$" gdi32.lib'
 
     .unityInputExcludePath = 'src/macos'
 ]
+
+.clangWindowsGL33Config = [
+    Using(.clangWindowsConfig)
+    .projectName + '_gl33'
+    .compilerOptions + ' -DRENDERER_GL33'
+    .linkerOptions + ' opengl32.lib'
+    .unityInputExcludedFiles = 'src/renderer/renderer_dx11.c'
+]
+
+.clangWindowsDX11Config = [
+    Using(.clangWindowsConfig)
+    .projectName + '_dx11'
+    .compilerOptions + ' -DRENDERER_DX11'
+    .linkerOptions + ' d3d11.lib dxgi.lib dxguid.lib d3dcompiler.lib winmm.lib'
+    .unityInputExcludedFiles = 'src/renderer/renderer_gl33.c'
+]
+
 #endif
 
 #if __OSX__
@@ -71,9 +85,6 @@ Compiler('Compiler-Clang') {
 
     .cFilePatterns + {'*.m'}
     .cppFilePatterns + {'*.mm'}
-    
-    .cUnityOutputPattern = 'UnityC*.m'
-    .cppUnityOutputPattern = 'UnityCpp*.mm'
 
     .unityInputExcludePath = 'src/windows'
 ]
@@ -81,7 +92,8 @@ Compiler('Compiler-Clang') {
 
 .projectConfigs = {
 #if __WINDOWS__
-    .clangWindowsConfig,
+    .clangWindowsGL33Config,
+    .clangWindowsDX11Config,
 #endif
 #if __OSX__
     .clangMacConfig,
@@ -95,16 +107,28 @@ ForEach(.projectConfig in .projectConfigs) {
         .UnityInputPath = .inputPath
         .UnityInputPattern = .cFilePatterns
         .UnityInputExcludePath = .unityInputExcludePath
+        .UnityInputExcludedFiles = .unityInputExcludedFiles
         .UnityOutputPath = 'tmp'
-        .UnityOutputPattern = .cUnityOutputPattern
+#if __WINDOWS__
+        .UnityOutputPattern = '$projectName$_c_*.c'
+#endif
+#if __OSX__
+        .UnityOutputPattern = '$projectName$_c_*.m'
+#endif
     }
 
     Unity('Unity-$projectName$-Cpp') {
         .UnityInputPath = .inputPath
         .UnityInputPattern = .cppFilePatterns
         .UnityInputExcludePath = .unityInputExcludePath
+        .UnityInputExcludedFiles = .unityInputExcludedFiles
         .UnityOutputPath = 'tmp'
-        .UnityOutputPattern = .cppUnityOutputPattern
+#if __WINDOWS__
+        .UnityOutputPattern = '$projectName$_cpp_*.cpp'
+#endif
+#if __OSX__
+        .UnityOutputPattern = '$projectName$_cpp_*.mm'
+#endif
     }
 
     ObjectList('Obj-$projectName$-C') {

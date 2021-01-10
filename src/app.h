@@ -1,10 +1,21 @@
 #pragma once
 #include "str.h"
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <Windows.h>
+#endif
 
 typedef struct _App {
   String title;
   int width;
   int height;
+
+#ifdef _WIN32
+  struct {
+    HWND window;
+  } win32;
+#endif
 } App;
 
 typedef void (*OnInit)(void);

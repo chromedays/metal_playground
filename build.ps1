@@ -14,4 +14,5 @@ $shaderFiles | ForEach-Object {
     & ./tools/spirv-cross.exe "./tmp/${shaderName}_frag.spv" --reflect --output "./tmp/${shaderName}_frag.json"
 }
 
-./FBuild.exe Exe-playground
+./FBuild.exe Exe-playground_gl33
+./FBuild.exe Exe-playground_gl33 -compdb
