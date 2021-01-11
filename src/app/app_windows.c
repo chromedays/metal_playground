@@ -194,6 +194,8 @@ int runMain(UNUSED int argc, UNUSED char **argv, const char *title, int width,
     }
   }
 
+  destroyRenderer();
+
   destroyString(&gApp.title);
 
   _CrtDumpMemoryLeaks();
@@ -222,7 +224,11 @@ static LRESULT CALLBACK wndProc(HWND window, UINT msg, WPARAM wp, LPARAM lp) {
 
 static const char *gResourceRootPaths[ResourceType_Count] = {
     "../resources",
+#ifdef RENDERER_GL33
     "../src/shaders/generated/glsl330",
+#elif defined(RENDERER_DX11)
+    "../src/shaders/generated/hlsl50",
+#endif
 };
 
 String createResourcePath(ResourceType type, const char *relPath) {

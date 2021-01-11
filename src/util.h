@@ -32,4 +32,6 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+#define ARRAY_COUNT(arr) (sizeof(arr) / sizeof((arr)[0]))
+
 #define UNUSED __attribute__((unused))

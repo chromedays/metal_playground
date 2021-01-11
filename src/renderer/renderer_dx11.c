@@ -1,6 +1,7 @@
 #include "../renderer.h"
 #include "../app.h"
 #include "../memory.h"
+#include "../util.h"
 #include <dxgidebug.h>
 #include <d3dcompiler.h>
 #define HR_ASSERT(exp)                                                         \
@@ -16,6 +17,28 @@
     }                                                                          \
   } while (0)
 
+typedef enum _ShaderType {
+  ShaderType_Vertex,
+  ShaderType_Fragment,
+  ShaderType_Count,
+} ShaderType;
+
+static const char *gShaderTargets[ShaderType_Count] = {
+    "vs_5_0",
+    "ps_5_0",
+};
+
+typedef struct _Shader {
+  ShaderType type;
+  union {
+    ID3D11VertexShader *vertex;
+    ID3D11PixelShader *fragment;
+  };
+  ID3DBlob *code;
+  void *bytecode;
+  SIZE_T bytecodeLength;
+} Shader;
+
 typedef struct _Renderer {
   IDXGISwapChain *swapChain;
   ID3D11Device *device;
@@ -29,12 +52,73 @@ typedef struct _Renderer {
   struct {
     ID3D11DepthStencilState *depthStencilState;
     ID3D11RasterizerState *rasterizerState;
+
+    Shader vertexShader;
+    Shader fragmentShader;
   } phong;
 
   Model tempModel;
   OrbitCamera cam;
 } Renderer;
 static Renderer gRenderer;
+
+static Shader createShader(const char *path, ShaderType shaderType) {
+  Shader shader = {.type = shaderType};
+
+  String resourcePath = createResourcePath(ResourceType_Shader, path);
+
+  int length;
+  void *source = readFileData(&resourcePath, true, &length);
+
+  ID3DBlob *shaderError;
+  const char *target = gShaderTargets[shader.type];
+
+  HR_ASSERT(D3DCompile(source, length, NULL, NULL, NULL, "main", target,
+                       D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0,
+                       &shader.code, &shaderError));
+
+  COM_RELEASE(shaderError);
+  MFREE(source);
+
+  shader.bytecode = ID3D10Blob_GetBufferPointer(shader.code);
+  shader.bytecodeLength = ID3D10Blob_GetBufferSize(shader.code);
+
+  switch (shader.type) {
+  case ShaderType_Vertex:
+    HR_ASSERT(ID3D11Device_CreateVertexShader(gRenderer.device, shader.bytecode,
+                                              shader.bytecodeLength, NULL,
+                                              &shader.vertex));
+    break;
+  case ShaderType_Fragment:
+    HR_ASSERT(ID3D11Device_CreatePixelShader(gRenderer.device, shader.bytecode,
+                                             shader.bytecodeLength, NULL,
+                                             &shader.fragment));
+    break;
+  default:
+    ASSERT(false);
+    break;
+  }
+
+  destroyString(&resourcePath);
+
+  return shader;
+}
+
+static void destroyShader(Shader *shader) {
+  switch (shader->type) {
+  case ShaderType_Vertex:
+    COM_RELEASE(shader->vertex);
+    break;
+  case ShaderType_Fragment:
+    COM_RELEASE(shader->fragment);
+    break;
+  default:
+    ASSERT(false);
+    break;
+  }
+  COM_RELEASE(shader->code);
+  *shader = (Shader){0};
+}
 
 void initRenderer(void) {
   App *app = getApp();
@@ -97,12 +181,7 @@ void initRenderer(void) {
       .Windowed = TRUE,
   };
 
-  UINT createDeviceFlags
-#ifdef _DEBUG
-      = D3D11_CREATE_DEVICE_DEBUG;
-#else
-      = 0;
-#endif
+  UINT createDeviceFlags = D3D11_CREATE_DEVICE_DEBUG;
 
   D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
 
@@ -170,7 +249,7 @@ void initRenderer(void) {
 
   D3D11_INPUT_ELEMENT_DESC layoutDescs[] = {
       {
-          .SemanticName = "TEXCOORD0",
+          .SemanticName = "TEXCOORD",
           .SemanticIndex = 0,
           .Format = DXGI_FORMAT_R32G32B32_FLOAT,
           .InputSlot = 0,
@@ -179,8 +258,8 @@ void initRenderer(void) {
           .InstanceDataStepRate = 0,
       },
       {
-          .SemanticName = "TEXCOORD1",
-          .SemanticIndex = 0,
+          .SemanticName = "TEXCOORD",
+          .SemanticIndex = 1,
           .Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
           .InputSlot = 0,
           .AlignedByteOffset = offsetof(Vertex, color),
@@ -188,8 +267,8 @@ void initRenderer(void) {
           .InstanceDataStepRate = 0,
       },
       {
-          .SemanticName = "TEXCOORD2",
-          .SemanticIndex = 0,
+          .SemanticName = "TEXCOORD",
+          .SemanticIndex = 2,
           .Format = DXGI_FORMAT_R32G32_FLOAT,
           .InputSlot = 0,
           .AlignedByteOffset = offsetof(Vertex, texcoord),
@@ -197,8 +276,8 @@ void initRenderer(void) {
           .InstanceDataStepRate = 0,
       },
       {
-          .SemanticName = "TEXCOORD3",
-          .SemanticIndex = 0,
+          .SemanticName = "TEXCOORD",
+          .SemanticIndex = 3,
           .Format = DXGI_FORMAT_R32G32B32_FLOAT,
           .InputSlot = 0,
           .AlignedByteOffset = offsetof(Vertex, normal),
@@ -206,9 +285,27 @@ void initRenderer(void) {
           .InstanceDataStepRate = 0,
       },
   };
+
+  gRenderer.phong.vertexShader =
+      createShader("phong_vert.hlsl", ShaderType_Vertex);
+  gRenderer.phong.fragmentShader =
+      createShader("phong_frag.hlsl", ShaderType_Fragment);
+
+  HR_ASSERT(ID3D11Device_CreateInputLayout(
+      gRenderer.device, layoutDescs, ARRAY_COUNT(layoutDescs),
+      gRenderer.phong.vertexShader.bytecode,
+      gRenderer.phong.vertexShader.bytecodeLength, &gRenderer.inputLayout));
 }
 
 void destroyRenderer(void) {
+  destroyShader(&gRenderer.phong.fragmentShader);
+  destroyShader(&gRenderer.phong.vertexShader);
+  COM_RELEASE(gRenderer.phong.rasterizerState);
+  COM_RELEASE(gRenderer.phong.depthStencilState);
+  COM_RELEASE(gRenderer.inputLayout);
+  COM_RELEASE(gRenderer.swapChainDSV);
+  COM_RELEASE(gRenderer.swapChainDepthStencilBuffer);
+  COM_RELEASE(gRenderer.swapChainRTV);
   COM_RELEASE(gRenderer.context);
   COM_RELEASE(gRenderer.device);
   COM_RELEASE(gRenderer.swapChain);
