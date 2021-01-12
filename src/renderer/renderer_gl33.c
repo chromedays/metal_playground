@@ -23,6 +23,7 @@ typedef struct _Renderer {
   uint32_t drawUniformBuffer;
 
   Model tempModel;
+
   OrbitCamera cam;
 } Renderer;
 
@@ -68,9 +69,10 @@ void initRenderer(void) {
                     MATERIAL_BINDING);
   setUniformBinding(gRenderer.phong.program, "type_DrawData", DRAW_BINDING);
 
-  gRenderer.cam.distance = 10;
+  gRenderer.cam.distance = 1;
   gRenderer.cam.phi = -90;
   gRenderer.cam.theta = 0;
+  gRenderer.cam.target = (Float3){0, 3, 0};
 
   ViewUniforms tempViewUniforms = {0};
   tempViewUniforms.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
@@ -102,8 +104,7 @@ void initRenderer(void) {
   glBufferData(GL_UNIFORM_BUFFER, sizeof(tempDrawUniforms), &tempDrawUniforms,
                GL_DYNAMIC_DRAW);
 
-  String gltfPath =
-      createResourcePath(ResourceType_Common, "gltf/AnimatedCube");
+  String gltfPath = createResourcePath(ResourceType_Common, "gltf/Sponza.glb");
   loadGLTFModel(&gRenderer.tempModel, &gltfPath);
   destroyString(&gltfPath);
 }
@@ -119,8 +120,23 @@ void destroyRenderer(void) {
 }
 
 void render(void) {
+  ViewUniforms tempViewUniforms = {0};
+  tempViewUniforms.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
+  tempViewUniforms.projMat = mat4Perspective(
+      degToRad(60), (float)getApp()->width / (float)getApp()->height, 0.01f,
+      1000.f);
+  glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.viewUniformBuffer);
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(tempViewUniforms),
+                  &tempViewUniforms);
+
   glUseProgram(gRenderer.phong.program);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  glClearDepth(0);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_GEQUAL);
+
+  gRenderer.cam.phi += 20.f * 0.016f;
+
   renderModel(&gRenderer.tempModel);
 }
 

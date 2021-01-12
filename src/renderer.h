@@ -168,6 +168,7 @@ typedef struct _OrbitCamera {
   float distance;
   float theta;
   float phi;
+  Float3 target;
 } OrbitCamera;
 
 Mat4 getOrbitCameraMatrix(const OrbitCamera *cam);

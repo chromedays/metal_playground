@@ -19,7 +19,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    out_var_SV_Target = float4((in_var_TEXCOORD1.xyz + 1.0f.xxx) * 0.5f, 1.0f);
+    out_var_SV_Target = float4((in_var_NORMAL + 1.0f.xxx) * 0.5f, 1.0f);
 }
 
 SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)

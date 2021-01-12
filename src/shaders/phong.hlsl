@@ -45,4 +45,6 @@ VertexOut phong_vert(VertexIn input) {
   return output;
 }
 
-float4 phong_frag(VertexOut input) : SV_Target { return float4((input.positionWorld.xyz + float3(1, 1, 1)) * 0.5, 1); }
+float4 phong_frag(VertexOut input) : SV_Target {
+  return float4((input.normal.xyz + float3(1, 1, 1)) * 0.5, 1);
+}
