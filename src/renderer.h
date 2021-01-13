@@ -12,7 +12,7 @@
 
 void initRenderer(void);
 void destroyRenderer(void);
-void render(void);
+void render(float dt);
 
 #ifdef __APPLE__
 #import <MetalKit/MetalKit.h>
@@ -162,7 +162,7 @@ typedef struct _Model {
 
 void loadGLTFModel(Model *model, const String *basePath);
 void destroyModel(Model *model);
-void renderModel(Model *model);
+void renderModel(Model *model, Mat4 transform);
 
 typedef struct _OrbitCamera {
   float distance;

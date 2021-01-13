@@ -1,4 +1,6 @@
 #include "app.h"
+#include "vmath.h"
+#include "renderer.h"
 #include <stdbool.h>
 
 static void onInit() {}

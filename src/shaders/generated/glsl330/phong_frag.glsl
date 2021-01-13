@@ -1,13 +1,13 @@
 #version 330
 
-in vec4 POSITION;
-in vec2 COLOR;
-in vec3 TEXCOORD;
-in vec4 NORMAL;
+in vec4 VertexOut0;
+in vec2 VertexOut1;
+in vec3 VertexOut2;
+in vec4 VertexOut3;
 layout(location = 0) out vec4 out_var_SV_Target;
 
 void main()
 {
-    out_var_SV_Target = vec4((TEXCOORD + vec3(1.0)) * 0.5, 1.0);
+    out_var_SV_Target = vec4((VertexOut2 + vec3(1.0)) * 0.5, 1.0);
 }
 

@@ -18,6 +18,20 @@ typedef struct _Renderer {
     uint32_t program;
   } phong;
 
+  // GBuffer pixel data
+  // Texture 1: baseColor(rgb), metallic(a)
+  // Texture 2: normal(rgb), roughness(a)
+  // Texture 3: position(rgb), occlusion(a)
+  struct {
+    uint32_t gbufferFBO;
+    uint32_t gbufferTextures[3];
+    uint32_t gbufferDepth;
+    uint32_t gbufferSampler;
+    uint32_t gbufferProgram;
+    int32_t gbufferTextureLocations[3];
+    uint32_t lightingProgram;
+  } deferred;
+
   uint32_t viewUniformBuffer;
   uint32_t materialUniformBuffer;
   uint32_t drawUniformBuffer;
@@ -40,6 +54,18 @@ static void setUniformBinding(uint32_t program, const char *name,
   }
 }
 
+static void setTexture(uint32_t texture, uint32_t sampler, int32_t location,
+                       uint32_t unit) {
+  if (location < 0) {
+    return;
+  }
+
+  glActiveTexture(GL_TEXTURE0 + unit);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glUniform1i(location, unit);
+  glBindSampler(unit, sampler);
+}
+
 static void GLAPIENTRY openglDebugCallback(UNUSED uint32_t source,
                                            uint32_t type, UNUSED uint32_t id,
                                            uint32_t severity,
@@ -53,6 +79,8 @@ static void GLAPIENTRY openglDebugCallback(UNUSED uint32_t source,
 }
 
 void initRenderer(void) {
+  App *app = getApp();
+
   if (GLAD_GL_KHR_debug) {
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -69,6 +97,67 @@ void initRenderer(void) {
                     MATERIAL_BINDING);
   setUniformBinding(gRenderer.phong.program, "type_DrawData", DRAW_BINDING);
 
+  // Init deferred pipeline
+  {
+    glGenFramebuffers(1, &gRenderer.deferred.gbufferFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, gRenderer.deferred.gbufferFBO);
+    glGenTextures(ARRAY_COUNT(gRenderer.deferred.gbufferTextures),
+                  gRenderer.deferred.gbufferTextures);
+
+    // TODO: Handle window resizing
+    glBindTexture(GL_TEXTURE_2D, gRenderer.deferred.gbufferTextures[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->width, app->height, 0,
+                 GL_RGBA, GL_FLOAT, NULL);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           gRenderer.deferred.gbufferTextures[0], 0);
+
+    glBindTexture(GL_TEXTURE_2D, gRenderer.deferred.gbufferTextures[1]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->width, app->height, 0,
+                 GL_RGBA, GL_FLOAT, NULL);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D,
+                           gRenderer.deferred.gbufferTextures[1], 0);
+
+    glBindTexture(GL_TEXTURE_2D, gRenderer.deferred.gbufferTextures[2]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, app->width, app->height, 0,
+                 GL_RGBA, GL_FLOAT, NULL);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D,
+                           gRenderer.deferred.gbufferTextures[2], 0);
+
+    uint32_t attachmentEnums[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+                                  GL_COLOR_ATTACHMENT2};
+    glDrawBuffers(ARRAY_COUNT(attachmentEnums), attachmentEnums);
+
+    glGenRenderbuffers(1, &gRenderer.deferred.gbufferDepth);
+    glBindRenderbuffer(GL_RENDERBUFFER, gRenderer.deferred.gbufferDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, app->width,
+                          app->height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                              GL_RENDERBUFFER, gRenderer.deferred.gbufferDepth);
+
+    ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+    glGenSamplers(1, &gRenderer.deferred.gbufferSampler);
+    glSamplerParameteri(gRenderer.deferred.gbufferSampler,
+                        GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glSamplerParameteri(gRenderer.deferred.gbufferSampler,
+                        GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    gRenderer.deferred.gbufferProgram =
+        createShaderProgram("gbuffer_vert.glsl", "gbuffer_frag.glsl");
+    gRenderer.deferred.lightingProgram = createShaderProgram(
+        "deferred_lighting_vert.glsl", "deferred_lighting_frag.glsl");
+
+    gRenderer.deferred.gbufferTextureLocations[0] =
+        glGetUniformLocation(gRenderer.deferred.lightingProgram,
+                             "SPIRV_Cross_Combinedgbuffer0gbufferSampler");
+    gRenderer.deferred.gbufferTextureLocations[1] =
+        glGetUniformLocation(gRenderer.deferred.lightingProgram,
+                             "SPIRV_Cross_Combinedgbuffer1gbufferSampler");
+    gRenderer.deferred.gbufferTextureLocations[2] =
+        glGetUniformLocation(gRenderer.deferred.lightingProgram,
+                             "SPIRV_Cross_Combinedgbuffer2gbufferSampler");
+  }
+
   gRenderer.cam.distance = 1;
   gRenderer.cam.phi = -90;
   gRenderer.cam.theta = 0;
@@ -77,8 +166,7 @@ void initRenderer(void) {
   ViewUniforms tempViewUniforms = {0};
   tempViewUniforms.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
   tempViewUniforms.projMat = mat4Perspective(
-      degToRad(60), (float)getApp()->width / (float)getApp()->height, 0.01f,
-      1000.f);
+      degToRad(60), (float)app->width / (float)app->height, 0.01f, 1000.f);
 
   MaterialUniforms tempMaterialUniforms = {
       .baseColorFactor = {0.5f, 1, 0.5f, 1},
@@ -110,8 +198,19 @@ void initRenderer(void) {
 }
 
 void destroyRenderer(void) {
-  glBindVertexArray(0);
-  glUseProgram(0);
+  destroyModel(&gRenderer.tempModel);
+
+  glDeleteBuffers(1, &gRenderer.drawUniformBuffer);
+  glDeleteBuffers(1, &gRenderer.materialUniformBuffer);
+  glDeleteBuffers(1, &gRenderer.viewUniformBuffer);
+
+  glDeleteProgram(gRenderer.deferred.lightingProgram);
+  glDeleteProgram(gRenderer.deferred.gbufferProgram);
+  glDeleteSamplers(1, &gRenderer.deferred.gbufferSampler);
+  glDeleteRenderbuffers(1, &gRenderer.deferred.gbufferDepth);
+  glDeleteTextures(ARRAY_COUNT(gRenderer.deferred.gbufferTextures),
+                   gRenderer.deferred.gbufferTextures);
+  glDeleteFramebuffers(1, &gRenderer.deferred.gbufferFBO);
 
   glDeleteVertexArrays(1, &gRenderer.vao);
   glDeleteProgram(gRenderer.phong.program);
@@ -119,25 +218,47 @@ void destroyRenderer(void) {
   gRenderer = (Renderer){0};
 }
 
-void render(void) {
+void render(float dt) {
+  App *app = getApp();
+
+  FORMAT_STRING(&app->title, "Playground (dt: %f)", dt);
+
+  glDepthRange(-1, 1);
+
   ViewUniforms tempViewUniforms = {0};
   tempViewUniforms.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
   tempViewUniforms.projMat = mat4Perspective(
-      degToRad(60), (float)getApp()->width / (float)getApp()->height, 0.01f,
-      1000.f);
+      degToRad(60), (float)app->width / (float)app->height, 0.1f, 2000.f);
   glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.viewUniformBuffer);
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(tempViewUniforms),
                   &tempViewUniforms);
 
-  glUseProgram(gRenderer.phong.program);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  glBindFramebuffer(GL_FRAMEBUFFER, gRenderer.deferred.gbufferFBO);
+  glUseProgram(gRenderer.deferred.gbufferProgram);
+
+  glClearColor(0, 0, 0, 0);
   glClearDepth(0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);
+  glViewport(0, 0, app->width, app->height);
 
-  gRenderer.cam.phi += 20.f * 0.016f;
+  renderModel(&gRenderer.tempModel, mat4Identity());
 
-  renderModel(&gRenderer.tempModel);
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glUseProgram(gRenderer.deferred.lightingProgram);
+  for (uint32_t i = 0; i < 3; ++i) {
+    setTexture(gRenderer.deferred.gbufferTextures[i],
+               gRenderer.deferred.gbufferSampler,
+               gRenderer.deferred.gbufferTextureLocations[i], i);
+  }
+
+  glDisable(GL_DEPTH_TEST);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
+
+  gRenderer.cam.phi += 20.f * dt;
 }
 
 void loadGLTFModel(Model *model, const String *basePath) {
@@ -496,10 +617,11 @@ static void renderMesh(const Model *model, const Mesh *mesh) {
   }
 }
 
-static void renderSceneNode(const Model *model, const SceneNode *node) {
+static void renderSceneNode(const Model *model, const SceneNode *node,
+                            Mat4 baseTransform) {
   if (node->mesh >= 0) {
     DrawUniforms uniform;
-    uniform.modelMat = node->worldTransform.matrix;
+    uniform.modelMat = mat4Multiply(node->worldTransform.matrix, baseTransform);
     uniform.normalMat = mat4Transpose(mat4Inverse(uniform.modelMat));
 
     glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.drawUniformBuffer);
@@ -512,12 +634,12 @@ static void renderSceneNode(const Model *model, const SceneNode *node) {
   if (node->numChildNodes > 0) {
     for (int i = 0; i < node->numChildNodes; ++i) {
       SceneNode *childNode = &model->nodes[node->childNodes[i]];
-      renderSceneNode(model, childNode);
+      renderSceneNode(model, childNode, baseTransform);
     }
   }
 }
 
-void renderModel(Model *model) {
+void renderModel(Model *model, Mat4 transform) {
   glBindBuffer(GL_ARRAY_BUFFER, model->gpuVertexBuffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->gpuIndexBuffer);
 
@@ -546,7 +668,7 @@ void renderModel(Model *model) {
     Scene *scene = &model->scenes[sceneIndex];
     for (int nodeIndex = 0; nodeIndex < scene->numNodes; ++nodeIndex) {
       SceneNode *node = &model->nodes[scene->nodes[nodeIndex]];
-      renderSceneNode(model, node);
+      renderSceneNode(model, node, transform);
     }
   }
 }

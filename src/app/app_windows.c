@@ -170,6 +170,10 @@ int runMain(UNUSED int argc, UNUSED char **argv, const char *title, int width,
   HDC dc = GetDC(window);
 #endif
 
+  if (init) {
+    init();
+  }
+
   while (msg.message != WM_QUIT) {
 
     if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
@@ -185,13 +189,23 @@ int runMain(UNUSED int argc, UNUSED char **argv, const char *title, int width,
       if (deltaTime > targetTimeStep) {
         deltaTime = targetTimeStep;
       }
+
+      SetWindowTextA(gApp.win32.window, gApp.title.buf);
+
+      if (update) {
+        update();
+      }
+
+      render(deltaTime);
+
 #ifdef RENDERER_GL33
-      glClearColor(0.1f, 0.1f, 0.1f, 1);
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      render();
       SwapBuffers(dc);
 #endif
     }
+  }
+
+  if (cleanup) {
+    cleanup();
   }
 
   destroyRenderer();
@@ -210,6 +224,10 @@ static LRESULT CALLBACK wndProc(HWND window, UINT msg, WPARAM wp, LPARAM lp) {
     PAINTSTRUCT paintStruct;
     BeginPaint(window, &paintStruct);
     EndPaint(window, &paintStruct);
+  } break;
+  case WM_SIZE: {
+    gApp.width = LOWORD(lp);
+    gApp.height = HIWORD(lp);
   } break;
   case WM_CLOSE:
     PostQuitMessage(0);
