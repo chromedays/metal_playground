@@ -39,6 +39,11 @@ typedef struct _Vertex {
 
 typedef uint32_t VertexIndex;
 
+typedef struct _LightUniform {
+  Float3 position;
+  float intensity;
+} LightUniform;
+
 typedef struct _UniformsPerView {
   Mat4 viewMat;
   Mat4 projMat;
@@ -172,5 +177,10 @@ typedef struct _OrbitCamera {
 } OrbitCamera;
 
 Mat4 getOrbitCameraMatrix(const OrbitCamera *cam);
+
+// Command stuffs
+void setCamera(const OrbitCamera *cam);
+void setDeferredGBufferPass(void);
+void setDeferredLightingPass(void);
 
 #endif

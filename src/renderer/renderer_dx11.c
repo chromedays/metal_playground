@@ -311,4 +311,4 @@ void destroyRenderer(void) {
   COM_RELEASE(gRenderer.swapChain);
 }
 
-void render(void) {}
+void render(float dt) {}

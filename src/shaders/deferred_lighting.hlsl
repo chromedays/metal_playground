@@ -20,5 +20,7 @@ DeferredLightingVertexOut deferred_lighting_vert(uint id: SV_VERTEXID) {
 }
 
 float4 deferred_lighting_frag(DeferredLightingVertexOut input) : SV_Target {
-    return float4(gbuffer1.Sample(gbufferSampler, float2(input.texcoord.x, 1 - input.texcoord.y)));
+    float2 texcoord = float2(input.texcoord.x, 1 - input.texcoord.y);
+    float3 normal = gbuffer1.Sample(gbufferSampler, texcoord).xyz;
+    return float4((normal + float3(1, 1, 1)) * 0.5, 1);
 }

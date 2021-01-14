@@ -16,7 +16,7 @@ struct deferred_lighting_frag_in
 fragment deferred_lighting_frag_out deferred_lighting_frag(deferred_lighting_frag_in in [[stage_in]], texture2d<float> gbuffer1 [[texture(0)]], sampler gbufferSampler [[sampler(0)]])
 {
     deferred_lighting_frag_out out = {};
-    out.out_var_SV_Target = gbuffer1.sample(gbufferSampler, float2(in.in_var_TEXCOORD.x, 1.0 - in.in_var_TEXCOORD.y));
+    out.out_var_SV_Target = float4((gbuffer1.sample(gbufferSampler, float2(in.in_var_TEXCOORD.x, 1.0 - in.in_var_TEXCOORD.y)).xyz + float3(1.0)) * 0.5, 1.0);
     return out;
 }
 

@@ -36,12 +36,24 @@ typedef struct _Renderer {
   uint32_t materialUniformBuffer;
   uint32_t drawUniformBuffer;
 
-  Model tempModel;
+  ViewUniforms viewUniforms;
+  MaterialUniforms materialUniforms;
 
-  OrbitCamera cam;
+  struct {
+    uint32_t vertexBuffer;
+    uint32_t indexBuffer;
+    uint32_t uniformBuffer;
+    uint32_t program;
+    uint32_t framebuffer;
+    uint32_t polygonMode;
+    bool depthTestEnabled;
+  } glState;
 } Renderer;
 
-static Renderer gRenderer;
+static Renderer gRenderer = {.glState = {
+                                 .polygonMode = GL_FILL,
+                                 .depthTestEnabled = false,
+                             }};
 
 static uint32_t createShaderProgram(const char *vertexShaderFilePath,
                                     const char *fragmentShaderFilePath);
@@ -78,6 +90,69 @@ static void GLAPIENTRY openglDebugCallback(UNUSED uint32_t source,
       message);
 }
 
+static void setVertexBuffer(uint32_t vertexBuffer) {
+  if (gRenderer.glState.vertexBuffer != vertexBuffer) {
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    gRenderer.glState.vertexBuffer = vertexBuffer;
+  }
+}
+
+static void setIndexBuffer(uint32_t indexBuffer) {
+  if (gRenderer.glState.indexBuffer != indexBuffer) {
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    gRenderer.glState.indexBuffer = indexBuffer;
+  }
+}
+
+static void setUniformBuffer(uint32_t uniformBuffer) {
+  if (gRenderer.glState.uniformBuffer != uniformBuffer) {
+    glBindBuffer(GL_UNIFORM_BUFFER, uniformBuffer);
+    gRenderer.glState.uniformBuffer = uniformBuffer;
+  }
+}
+
+static void setProgram(uint32_t program) {
+  if (gRenderer.glState.program != program) {
+    glUseProgram(program);
+    gRenderer.glState.program = program;
+  }
+}
+
+static void setFramebuffer(uint32_t framebuffer) {
+  if (gRenderer.glState.framebuffer != framebuffer) {
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    gRenderer.glState.framebuffer = framebuffer;
+  }
+}
+
+static void setPolygonMode(uint32_t polygonMode) {
+  if (gRenderer.glState.polygonMode != polygonMode) {
+    glPolygonMode(GL_FRONT_AND_BACK, polygonMode);
+    gRenderer.glState.polygonMode = polygonMode;
+  }
+}
+
+static void setModeEnable(uint32_t mode, bool enable) {
+  if (enable) {
+    glEnable(mode);
+  } else {
+    glDisable(mode);
+  }
+}
+
+static void setDepthTestEnable(bool enable) {
+  if (gRenderer.glState.depthTestEnabled != enable) {
+    setModeEnable(GL_DEPTH_TEST, enable);
+    gRenderer.glState.depthTestEnabled = enable;
+  }
+}
+
+static void registerUniformBindings(uint32_t program) {
+  setUniformBinding(program, "type_ViewData", VIEW_BINDING);
+  setUniformBinding(program, "type_MaterialData", MATERIAL_BINDING);
+  setUniformBinding(program, "type_DrawData", DRAW_BINDING);
+}
+
 void initRenderer(void) {
   App *app = getApp();
 
@@ -92,10 +167,7 @@ void initRenderer(void) {
 
   gRenderer.phong.program =
       createShaderProgram("phong_vert.glsl", "phong_frag.glsl");
-  setUniformBinding(gRenderer.phong.program, "type_ViewData", VIEW_BINDING);
-  setUniformBinding(gRenderer.phong.program, "type_MaterialData",
-                    MATERIAL_BINDING);
-  setUniformBinding(gRenderer.phong.program, "type_DrawData", DRAW_BINDING);
+  registerUniformBindings(gRenderer.phong.program);
 
   // Init deferred pipeline
   {
@@ -144,6 +216,7 @@ void initRenderer(void) {
 
     gRenderer.deferred.gbufferProgram =
         createShaderProgram("gbuffer_vert.glsl", "gbuffer_frag.glsl");
+    registerUniformBindings(gRenderer.deferred.gbufferProgram);
     gRenderer.deferred.lightingProgram = createShaderProgram(
         "deferred_lighting_vert.glsl", "deferred_lighting_frag.glsl");
 
@@ -158,48 +231,32 @@ void initRenderer(void) {
                              "SPIRV_Cross_Combinedgbuffer2gbufferSampler");
   }
 
-  gRenderer.cam.distance = 1;
-  gRenderer.cam.phi = -90;
-  gRenderer.cam.theta = 0;
-  gRenderer.cam.target = (Float3){0, 3, 0};
-
-  ViewUniforms tempViewUniforms = {0};
-  tempViewUniforms.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
-  tempViewUniforms.projMat = mat4Perspective(
-      degToRad(60), (float)app->width / (float)app->height, 0.01f, 1000.f);
-
-  MaterialUniforms tempMaterialUniforms = {
-      .baseColorFactor = {0.5f, 1, 0.5f, 1},
-  };
-
-  DrawUniforms tempDrawUniforms = {
-      .modelMat = mat4Identity(),
-      .normalMat = mat4Identity(),
-  };
-
   glGenBuffers(1, &gRenderer.viewUniformBuffer);
   glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.viewUniformBuffer);
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(tempViewUniforms), &tempViewUniforms,
-               GL_DYNAMIC_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(ViewUniforms), NULL, GL_DYNAMIC_DRAW);
 
   glGenBuffers(1, &gRenderer.materialUniformBuffer);
   glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.materialUniformBuffer);
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(tempMaterialUniforms),
-               &tempMaterialUniforms, GL_DYNAMIC_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(MaterialUniforms), NULL,
+               GL_DYNAMIC_DRAW);
 
   glGenBuffers(1, &gRenderer.drawUniformBuffer);
   glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.drawUniformBuffer);
-  glBufferData(GL_UNIFORM_BUFFER, sizeof(tempDrawUniforms), &tempDrawUniforms,
-               GL_DYNAMIC_DRAW);
+  glBufferData(GL_UNIFORM_BUFFER, sizeof(DrawUniforms), NULL, GL_DYNAMIC_DRAW);
 
-  String gltfPath = createResourcePath(ResourceType_Common, "gltf/Sponza.glb");
-  loadGLTFModel(&gRenderer.tempModel, &gltfPath);
-  destroyString(&gltfPath);
+  // set initial opengl states
+  glBindBuffer(GL_ARRAY_BUFFER, gRenderer.glState.vertexBuffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gRenderer.glState.indexBuffer);
+  glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.glState.uniformBuffer);
+  glUseProgram(gRenderer.glState.program);
+  glBindFramebuffer(GL_FRAMEBUFFER, gRenderer.glState.framebuffer);
+  glPolygonMode(GL_FRONT_AND_BACK, gRenderer.glState.polygonMode);
+  setModeEnable(GL_DEPTH_TEST, gRenderer.glState.depthTestEnabled);
+  glDepthFunc(GL_GEQUAL);
+  glDepthRange(-1, 1);
 }
 
 void destroyRenderer(void) {
-  destroyModel(&gRenderer.tempModel);
-
   glDeleteBuffers(1, &gRenderer.drawUniformBuffer);
   glDeleteBuffers(1, &gRenderer.materialUniformBuffer);
   glDeleteBuffers(1, &gRenderer.viewUniformBuffer);
@@ -219,46 +276,16 @@ void destroyRenderer(void) {
 }
 
 void render(float dt) {
-  App *app = getApp();
 
-  FORMAT_STRING(&app->title, "Playground (dt: %f)", dt);
+  // renderModel(&gRenderer.tempModel, mat4Identity());
 
-  glDepthRange(-1, 1);
+  // int test;
+  // glGetActiveUniformBlockiv(
+  //     gRenderer.phong.program,
+  //     glGetUniformBlockIndex(gRenderer.phong.program, "type_DrawData"),
+  //     GL_UNIFORM_BLOCK_BINDING, &test);
 
-  ViewUniforms tempViewUniforms = {0};
-  tempViewUniforms.viewMat = getOrbitCameraMatrix(&gRenderer.cam);
-  tempViewUniforms.projMat = mat4Perspective(
-      degToRad(60), (float)app->width / (float)app->height, 0.1f, 2000.f);
-  glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.viewUniformBuffer);
-  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(tempViewUniforms),
-                  &tempViewUniforms);
-
-  glBindFramebuffer(GL_FRAMEBUFFER, gRenderer.deferred.gbufferFBO);
-  glUseProgram(gRenderer.deferred.gbufferProgram);
-
-  glClearColor(0, 0, 0, 0);
-  glClearDepth(0);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_GEQUAL);
-  glViewport(0, 0, app->width, app->height);
-
-  renderModel(&gRenderer.tempModel, mat4Identity());
-
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  glUseProgram(gRenderer.deferred.lightingProgram);
-  for (uint32_t i = 0; i < 3; ++i) {
-    setTexture(gRenderer.deferred.gbufferTextures[i],
-               gRenderer.deferred.gbufferSampler,
-               gRenderer.deferred.gbufferTextureLocations[i], i);
-  }
-
-  glDisable(GL_DEPTH_TEST);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glDrawArrays(GL_TRIANGLES, 0, 3);
-
-  gRenderer.cam.phi += 20.f * dt;
+  // LOG("%d", test);
 }
 
 void loadGLTFModel(Model *model, const String *basePath) {
@@ -473,10 +500,10 @@ void loadGLTFModel(Model *model, const String *basePath) {
   uint32_t *vb = &model->gpuVertexBuffer;
   uint32_t *ib = &model->gpuIndexBuffer;
   glGenBuffers(1, vb);
-  glBindBuffer(GL_ARRAY_BUFFER, *vb);
+  setVertexBuffer(*vb);
   glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, NULL, GL_STATIC_DRAW);
   glGenBuffers(1, ib);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, *ib);
+  setIndexBuffer(*ib);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, NULL, GL_STATIC_DRAW);
 
   int vertexOffsetInBytes = 0;
@@ -498,9 +525,6 @@ void loadGLTFModel(Model *model, const String *basePath) {
       indexOffsetInBytes += subMesh->numIndices * sizeof(VertexIndex);
     }
   }
-
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
   model->numNodes = gltf->nodes_count;
   model->nodes = MMALLOC_ARRAY_ZEROES(SceneNode, model->numNodes);
@@ -607,7 +631,7 @@ static void renderMesh(const Model *model, const Mesh *mesh) {
     Material *material = &model->materials[subMesh->material];
 
     MaterialUniforms uniforms = {.baseColorFactor = material->baseColorFactor};
-    glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.materialUniformBuffer);
+    setUniformBuffer(gRenderer.materialUniformBuffer);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(uniforms), &uniforms);
 
     glDrawElementsBaseVertex(
@@ -624,7 +648,7 @@ static void renderSceneNode(const Model *model, const SceneNode *node,
     uniform.modelMat = mat4Multiply(node->worldTransform.matrix, baseTransform);
     uniform.normalMat = mat4Transpose(mat4Inverse(uniform.modelMat));
 
-    glBindBuffer(GL_UNIFORM_BUFFER, gRenderer.drawUniformBuffer);
+    setUniformBuffer(gRenderer.drawUniformBuffer);
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(uniform), &uniform);
 
     Mesh *mesh = &model->meshes[node->mesh];
@@ -640,8 +664,8 @@ static void renderSceneNode(const Model *model, const SceneNode *node,
 }
 
 void renderModel(Model *model, Mat4 transform) {
-  glBindBuffer(GL_ARRAY_BUFFER, model->gpuVertexBuffer);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model->gpuIndexBuffer);
+  setVertexBuffer(model->gpuVertexBuffer);
+  setIndexBuffer(model->gpuIndexBuffer);
 
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex),
@@ -729,4 +753,42 @@ static uint32_t createShaderProgram(const char *vertexShaderFilePath,
   glDeleteShader(fragmentShader);
 
   return program;
+}
+
+void setCamera(const OrbitCamera *cam) {
+  gRenderer.viewUniforms.viewMat = getOrbitCameraMatrix(cam);
+}
+
+void setDeferredGBufferPass(void) {
+  const App *app = getApp();
+
+  gRenderer.viewUniforms.projMat = mat4Perspective(
+      degToRad(60), (float)app->width / (float)app->height, 0.1f, 2000.f);
+  setUniformBuffer(gRenderer.viewUniformBuffer);
+  glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(ViewUniforms),
+                  &gRenderer.viewUniforms);
+
+  setFramebuffer(gRenderer.deferred.gbufferFBO);
+  setProgram(gRenderer.deferred.gbufferProgram);
+
+  glClearColor(0, 0, 0, 0);
+  glClearDepth(0);
+  setPolygonMode(GL_FILL);
+  setDepthTestEnable(true);
+  glViewport(0, 0, app->width, app->height);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void setDeferredLightingPass(void) {
+  setFramebuffer(0);
+  setProgram(gRenderer.deferred.lightingProgram);
+  for (uint32_t i = 0; i < 3; ++i) {
+    setTexture(gRenderer.deferred.gbufferTextures[i],
+               gRenderer.deferred.gbufferSampler,
+               gRenderer.deferred.gbufferTextureLocations[i], i);
+  }
+
+  setDepthTestEnable(false);
+  setVertexBuffer(0);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
 }

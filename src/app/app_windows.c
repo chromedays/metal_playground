@@ -193,7 +193,7 @@ int runMain(UNUSED int argc, UNUSED char **argv, const char *title, int width,
       SetWindowTextA(gApp.win32.window, gApp.title.buf);
 
       if (update) {
-        update();
+        update(deltaTime);
       }
 
       render(deltaTime);

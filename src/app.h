@@ -19,7 +19,7 @@ typedef struct _App {
 } App;
 
 typedef void (*OnInit)(void);
-typedef void (*OnUpdate)(void);
+typedef void (*OnUpdate)(float dt);
 typedef void (*OnCleanup)(void);
 
 int runMain(int argc, char **argv, const char *title, int width, int height,

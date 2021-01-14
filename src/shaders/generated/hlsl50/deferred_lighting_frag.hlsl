@@ -16,7 +16,7 @@ struct SPIRV_Cross_Output
 
 void frag_main()
 {
-    out_var_SV_Target = gbuffer1.Sample(gbufferSampler, float2(in_var_TEXCOORD.x, 1.0f - in_var_TEXCOORD.y));
+    out_var_SV_Target = float4((gbuffer1.Sample(gbufferSampler, float2(in_var_TEXCOORD.x, 1.0f - in_var_TEXCOORD.y)).xyz + 1.0f.xxx) * 0.5f, 1.0f);
 }
 
 SPIRV_Cross_Output main(SPIRV_Cross_Input stage_input)
